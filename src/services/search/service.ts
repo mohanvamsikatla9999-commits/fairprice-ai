@@ -9,11 +9,22 @@ export type SearchFilters = {
   maxPriceInr?: number | null;
   city?: string | null;
   state?: string | null;
+  area?: string | null;
   conditionGrade?: ConditionGrade | null;
+  sellerType?: "INDIVIDUAL" | "BUSINESS" | null;
+  postedWithinDays?: number | null;
+  attributes?: Record<string, string>;
   lat?: number | null;
   lng?: number | null;
   radiusKm?: number | null;
-  sort?: "relevance" | "price_asc" | "price_desc" | "newest" | "distance";
+  sort?:
+    | "relevance"
+    | "price_asc"
+    | "price_desc"
+    | "newest"
+    | "distance"
+    | "views"
+    | "featured";
   page?: number;
   pageSize?: number;
 };
@@ -52,6 +63,10 @@ function buildOrderBy(
       return [{ priceInr: "desc" }];
     case "newest":
       return [{ publishedAt: "desc" }];
+    case "views":
+      return [{ views: "desc" }];
+    case "featured":
+      return [{ isFeatured: "desc" }, { isBoosted: "desc" }, { publishedAt: "desc" }];
     case "distance":
     case "relevance":
     default:
@@ -74,19 +89,52 @@ export class SearchService {
       .split(/\s+/)
       .filter((k) => k.length > 1);
 
+    let categoryFilter: Prisma.ListingWhereInput["category"] | undefined;
+    if (filters.categorySlug) {
+      const cat = await prisma.category.findFirst({
+        where: { slug: filters.categorySlug, isActive: true },
+        select: { id: true },
+      });
+      if (cat) {
+        const childIds = await prisma.category.findMany({
+          where: { parentId: cat.id, isActive: true },
+          select: { id: true },
+        });
+        const ids = [cat.id, ...childIds.map((c) => c.id)];
+        categoryFilter = { id: { in: ids } };
+      } else {
+        categoryFilter = { slug: filters.categorySlug };
+      }
+    }
+
+    const attrEntries = Object.entries(filters.attributes ?? {}).filter(
+      ([, v]) => v != null && String(v).trim() !== "",
+    );
+
     const where: Prisma.ListingWhereInput = {
       status: "ACTIVE",
       deletedAt: null,
-      ...(filters.categorySlug
-        ? { category: { slug: filters.categorySlug } }
-        : {}),
+      ...(categoryFilter ? { category: categoryFilter } : {}),
       ...(filters.city
         ? { city: { equals: filters.city, mode: "insensitive" } }
         : {}),
       ...(filters.state
         ? { state: { equals: filters.state, mode: "insensitive" } }
         : {}),
+      ...(filters.area
+        ? { area: { equals: filters.area, mode: "insensitive" } }
+        : {}),
+      ...(filters.sellerType ? { sellerType: filters.sellerType } : {}),
       ...(filters.conditionGrade ? { conditionGrade: filters.conditionGrade } : {}),
+      ...(filters.postedWithinDays
+        ? {
+            publishedAt: {
+              gte: new Date(
+                Date.now() - filters.postedWithinDays * 24 * 60 * 60 * 1000,
+              ),
+            },
+          }
+        : {}),
       ...(filters.minPriceInr !== undefined && filters.minPriceInr !== null
         ? { priceInr: { gte: filters.minPriceInr } }
         : {}),
@@ -98,6 +146,18 @@ export class SearchService {
                 : {}),
               lte: filters.maxPriceInr,
             },
+          }
+        : {}),
+      ...(attrEntries.length
+        ? {
+            AND: attrEntries.map(([key, value]) => ({
+              attributes: {
+                some: {
+                  key,
+                  value: { equals: value, mode: "insensitive" },
+                },
+              },
+            })),
           }
         : {}),
       ...(keywords.length

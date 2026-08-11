@@ -87,6 +87,11 @@ export default function ProductPage() {
       } catch {
         /* ignore */
       }
+      void fetch("/api/recently-viewed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: id }),
+      }).catch(() => undefined);
       setLoading(false);
     })();
   }, [id]);
@@ -394,7 +399,7 @@ export default function ProductPage() {
             />
             {seller?.id ? (
               <a
-                href={`/store/${seller.id}`}
+                href={`/seller/${seller.id}`}
                 className="mt-4 inline-block text-sm text-primary hover:underline"
               >
                 View seller store

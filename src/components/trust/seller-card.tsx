@@ -32,7 +32,7 @@ export function SellerCard({
   href,
   className,
 }: SellerCardProps) {
-  const link = href ?? `/sellers/${id}`;
+  const link = href ?? `/seller/${id}`;
   const initials = name
     .split(" ")
     .map((n) => n[0])

@@ -18,7 +18,11 @@ const createSchema = z.object({
   variantId: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
+  area: z.string().optional(),
   postalCode: z.string().optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
+  sellerType: z.enum(["INDIVIDUAL", "BUSINESS"]).optional(),
   originalPriceInr: z.number().int().positive().optional(),
   attributes: z
     .array(z.object({ key: z.string(), value: z.string() }))

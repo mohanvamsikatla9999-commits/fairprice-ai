@@ -162,10 +162,10 @@ export function Navbar({
                   <Link href="/verify">FairPrice ID</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard">Seller dashboard</Link>
+                  <Link href="/my-listings">My listings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/listings">My listings</Link>
+                  <Link href="/dashboard">Seller dashboard</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/verification">Verification</Link>

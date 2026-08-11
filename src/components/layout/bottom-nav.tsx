@@ -10,7 +10,7 @@ const ITEMS = [
   { href: "/marketplace", label: "Search", icon: Search },
   { href: "/sell", label: "Sell", icon: PlusCircle, emphasize: true },
   { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/dashboard", label: "Account", icon: User },
+  { href: "/my-listings", label: "Account", icon: User },
 ] as const;
 
 export interface BottomNavProps {

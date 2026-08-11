@@ -99,6 +99,11 @@ enum ConditionGrade {
   POOR
 }
 
+enum SellerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
 enum PriceVerdict {
   UNDERPRICED
   FAIR
@@ -301,6 +306,8 @@ model User {
   conditionAssessments ConditionAssessment[]
   moderationCases   ModerationCase[]  @relation("ModerationAssignee")
   viewHistory       ListingView[]
+  searchHistory     SearchHistory[]
+  recentlyViewed    RecentlyViewed[]
   identityVerifications IdentityVerification[]
   verificationConsents  VerificationConsent[]
   verificationReviews   VerificationReviewCase[] @relation("VerificationReviewSubject")
@@ -483,6 +490,53 @@ model ProductVariant {
 
 // ─── Listings ────────────────────────────────────────────────────────────────
 
+model Location {
+  id        String   @id @default(cuid())
+  country   String   @default("IN")
+  state     String
+  city      String
+  area      String?
+  pincode   String?
+  lat       Float?
+  lng       Float?
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings Listing[]
+
+  @@index([city, state])
+  @@index([area])
+  @@index([pincode])
+}
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  filters   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([query])
+}
+
+model RecentlyViewed {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  viewedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId, viewedAt])
+}
+
 model Listing {
   id              String        @id @default(cuid())
   sellerId        String
@@ -496,12 +550,15 @@ model Listing {
   originalPriceInr Int?
   conditionGrade  ConditionGrade @default(GOOD)
   status          ListingStatus @default(DRAFT)
+  sellerType      SellerType    @default(INDIVIDUAL)
   city            String?
   state           String?
+  area            String?
   postalCode      String?
   lat             Float?
   lng             Float?
   approximateArea String?
+  locationId      String?
   views           Int           @default(0)
   uniqueViews     Int           @default(0)
   favoriteCount   Int           @default(0)
@@ -523,6 +580,7 @@ model Listing {
   category    Category             @relation(fields: [categoryId], references: [id])
   product     Product?             @relation(fields: [productId], references: [id])
   variant     ProductVariant?      @relation(fields: [variantId], references: [id])
+  location    Location?            @relation(fields: [locationId], references: [id])
   images      ListingImage[]
   attributes  ListingAttribute[]
   condition   ConditionAssessment?
@@ -534,6 +592,7 @@ model Listing {
   reports     Report[]
   promotions  Promotion[]
   views_log   ListingView[]
+  recentlyViewed RecentlyViewed[]
   moderationCases ModerationCase[]
   priceHistory PriceHistory[]
 
@@ -542,10 +601,14 @@ model Listing {
   @@index([status])
   @@index([priceInr])
   @@index([city, state])
+  @@index([area])
+  @@index([locationId])
+  @@index([sellerType])
   @@index([publishedAt])
   @@index([isFeatured, isBoosted])
   @@index([riskLevel])
   @@index([deletedAt])
+  @@index([views])
 }
 
 model ListingImage {

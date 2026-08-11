@@ -17,6 +17,11 @@ import {
   type Prisma,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import {
+  MARKETPLACE_CATEGORY_TREE,
+  CITY_AREAS,
+  type CategorySeedNode,
+} from "./marketplace-categories";
 
 const prisma = new PrismaClient();
 
@@ -51,32 +56,7 @@ const LAST_NAMES = [
   "Bhat", "Menon", "Kulkarni", "Saxena", "Trivedi", "Naidu", "Shetty", "Bose",
 ];
 
-const CATEGORIES = [
-  { name: "Mobiles", slug: "mobiles", icon: "smartphone", description: "Phones and accessories" },
-  { name: "Laptops & Computers", slug: "laptops", icon: "laptop", description: "Laptops, desktops, peripherals" },
-  { name: "Cars", slug: "cars", icon: "car", description: "Used cars and SUVs" },
-  { name: "Bikes & Scooters", slug: "bikes", icon: "bike", description: "Two-wheelers" },
-  { name: "Furniture", slug: "furniture", icon: "sofa", description: "Home and office furniture" },
-  { name: "Electronics", slug: "electronics", icon: "tv", description: "TVs, cameras, gadgets" },
-  { name: "Appliances", slug: "appliances", icon: "washing-machine", description: "Home appliances" },
-  { name: "Fashion", slug: "fashion", icon: "shirt", description: "Clothing and accessories" },
-  { name: "Watches & Jewellery", slug: "watches-jewellery", icon: "watch", description: "Watches and jewellery" },
-  { name: "Books", slug: "books", icon: "book", description: "Books and study material" },
-  { name: "Sports & Fitness", slug: "sports", icon: "dumbbell", description: "Sports gear and fitness" },
-  { name: "Kids & Baby", slug: "kids", icon: "baby", description: "Kids and baby products" },
-  { name: "Home & Kitchen", slug: "home-kitchen", icon: "home", description: "Home and kitchen items" },
-  { name: "Cameras", slug: "cameras", icon: "camera", description: "Cameras and lenses" },
-  { name: "Gaming", slug: "gaming", icon: "gamepad", description: "Consoles and games" },
-  { name: "Musical Instruments", slug: "musical-instruments", icon: "music", description: "Instruments and gear" },
-  { name: "Pets", slug: "pets", icon: "paw", description: "Pet supplies" },
-  { name: "Tools & DIY", slug: "tools", icon: "wrench", description: "Tools and DIY" },
-  { name: "Property Rentals", slug: "property-rentals", icon: "building", description: "Short-term rentals" },
-  { name: "Property Sale", slug: "property-sale", icon: "home", description: "Homes and plots — waitlist" },
-  { name: "Jobs", slug: "jobs", icon: "briefcase", description: "Local jobs — waitlist" },
-  { name: "Services", slug: "services", icon: "briefcase", description: "Local services" },
-  { name: "Collectibles", slug: "collectibles", icon: "gem", description: "Collectibles and antiques" },
-  { name: "Other", slug: "other", icon: "package", description: "Everything else" },
-] as const;
+const CATEGORIES = MARKETPLACE_CATEGORY_TREE;
 
 const CONDITIONS: ConditionGrade[] = [
   "LIKE_NEW",
@@ -245,7 +225,7 @@ const PRODUCTS: ProductDef[] = [
     brand: "Apple",
     name: "MacBook Pro 14 M3",
     slug: "macbook-pro-14-m3",
-    categorySlug: "laptops",
+    categorySlug: "computers-laptops",
     description: "Demo catalog — MacBook Pro 14 M3",
     variants: [
       { name: "M3 8/512 Space Gray", sku: "MBP14-M3-8-512", msrpInr: 169900, attributes: { ram: "8GB", storage: "512GB", chip: "M3" } },
@@ -256,7 +236,7 @@ const PRODUCTS: ProductDef[] = [
     brand: "Apple",
     name: "MacBook Air 13 M2",
     slug: "macbook-air-13-m2",
-    categorySlug: "laptops",
+    categorySlug: "computers-laptops",
     description: "Demo catalog — MacBook Air 13 M2",
     variants: [
       { name: "M2 8/256 Midnight", sku: "MBA13-M2-8-256", msrpInr: 99900, attributes: { ram: "8GB", storage: "256GB", chip: "M2" } },
@@ -267,7 +247,7 @@ const PRODUCTS: ProductDef[] = [
     brand: "Dell",
     name: "XPS 15",
     slug: "dell-xps-15",
-    categorySlug: "laptops",
+    categorySlug: "computers-laptops",
     description: "Demo catalog — Dell XPS 15",
     variants: [
       { name: "i7 16/512 OLED", sku: "XPS15-I7-16-512", msrpInr: 189990, attributes: { ram: "16GB", storage: "512GB", cpu: "i7" } },
@@ -278,7 +258,7 @@ const PRODUCTS: ProductDef[] = [
     brand: "HP",
     name: "Pavilion 15",
     slug: "hp-pavilion-15",
-    categorySlug: "laptops",
+    categorySlug: "computers-laptops",
     description: "Demo catalog — HP Pavilion 15",
     variants: [
       { name: "Ryzen 5 16/512", sku: "HPP15-R5-16-512", msrpInr: 62990, attributes: { ram: "16GB", storage: "512GB", cpu: "Ryzen 5" } },
@@ -288,7 +268,7 @@ const PRODUCTS: ProductDef[] = [
     brand: "Custom",
     name: "Gaming Desktop RTX 4070",
     slug: "gaming-pc-rtx-4070",
-    categorySlug: "laptops",
+    categorySlug: "computers-laptops",
     description: "Demo catalog — custom gaming PC",
     variants: [
       { name: "Ryzen 7 / 32GB / 1TB", sku: "GPC-4070-R7", msrpInr: 145000, attributes: { gpu: "RTX 4070", ram: "32GB", storage: "1TB" } },
@@ -532,6 +512,8 @@ async function clearDemoData() {
   await prisma.listingImage.deleteMany();
   await prisma.listingAttribute.deleteMany();
   await prisma.listingView.deleteMany();
+  await prisma.recentlyViewed.deleteMany();
+  await prisma.searchHistory.deleteMany();
   await prisma.priceHistory.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.report.deleteMany();
@@ -539,6 +521,7 @@ async function clearDemoData() {
   await prisma.fraudSignal.deleteMany();
   await prisma.fraudRisk.deleteMany();
   await prisma.listing.deleteMany();
+  await prisma.location.deleteMany();
   await prisma.comparableListing.deleteMany();
   await prisma.marketPriceSnapshot.deleteMany();
   await prisma.demandSnapshot.deleteMany();
@@ -565,98 +548,123 @@ async function clearDemoData() {
 }
 
 async function seedCategories() {
-  console.log("Seeding 22 categories...");
+  console.log("Seeding marketplace category tree...");
   const map = new Map<string, string>();
-  for (let i = 0; i < CATEGORIES.length; i++) {
-    const c = CATEGORIES[i]!;
+  let sort = 0;
+
+  async function upsertNode(node: CategorySeedNode, parentId: string | null) {
     const row = await prisma.category.upsert({
-      where: { slug: c.slug },
+      where: { slug: node.slug },
       create: {
-        name: c.name,
-        slug: c.slug,
-        icon: c.icon,
-        description: c.description,
-        sortOrder: i,
+        name: node.name,
+        slug: node.slug,
+        icon: node.icon ?? null,
+        description: node.description ?? null,
+        parentId,
+        sortOrder: sort++,
         isActive: true,
       },
       update: {
-        name: c.name,
-        icon: c.icon,
-        description: c.description,
-        sortOrder: i,
+        name: node.name,
+        icon: node.icon ?? null,
+        description: node.description ?? null,
+        parentId,
+        sortOrder: sort,
         isActive: true,
       },
     });
-    map.set(c.slug, row.id);
+    map.set(node.slug, row.id);
+    for (const child of node.children ?? []) {
+      await upsertNode(child, row.id);
+    }
   }
+
+  for (const root of MARKETPLACE_CATEGORY_TREE) {
+    await upsertNode(root, null);
+  }
+
+  // Compatibility aliases for older product catalog slugs
+  if (!map.has("laptops") && map.has("computers-laptops")) {
+    map.set("laptops", map.get("computers-laptops")!);
+  }
+  if (!map.has("property-sale") && map.has("property-sale-homes")) {
+    map.set("property-sale", map.get("property-sale-homes")!);
+  }
+  if (!map.has("property-rentals") && map.has("property-rent-homes")) {
+    map.set("property-rentals", map.get("property-rent-homes")!);
+  }
+
   return map;
 }
 
 async function seedCategoryAttributes(categoryIds: Map<string, string>) {
-  console.log("Seeding category attributes (mobiles, laptops, cars)...");
-  const defs: Array<{
-    categorySlug: string;
-    key: string;
-    label: string;
-    type: AttributeType;
-    options?: string[];
-    required?: boolean;
-    unit?: string;
-    sortOrder: number;
-  }> = [
-    { categorySlug: "mobiles", key: "storage", label: "Storage", type: "SELECT", options: ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"], required: true, sortOrder: 1 },
-    { categorySlug: "mobiles", key: "ram", label: "RAM", type: "SELECT", options: ["2GB", "3GB", "4GB", "6GB", "8GB", "12GB", "16GB"], required: true, sortOrder: 2 },
-    { categorySlug: "mobiles", key: "color", label: "Colour", type: "TEXT", sortOrder: 3 },
-    { categorySlug: "mobiles", key: "network", label: "Network", type: "SELECT", options: ["4G", "5G"], sortOrder: 4 },
-    { categorySlug: "mobiles", key: "ageMonths", label: "Age (months)", type: "NUMBER", required: true, sortOrder: 5 },
-    { categorySlug: "mobiles", key: "batteryHealth", label: "Battery health", type: "NUMBER", unit: "%", sortOrder: 6 },
-    { categorySlug: "mobiles", key: "screenCondition", label: "Screen condition", type: "SELECT", options: ["Perfect", "Minor scratches", "Visible scratches", "Cracked / damaged"], required: true, sortOrder: 7 },
-    { categorySlug: "mobiles", key: "bodyCondition", label: "Body condition", type: "SELECT", options: ["Perfect", "Minor marks", "Dents / scuffs", "Heavy wear"], required: true, sortOrder: 8 },
-    { categorySlug: "mobiles", key: "boxAvailable", label: "Original box", type: "BOOLEAN", required: true, sortOrder: 9 },
-    { categorySlug: "mobiles", key: "chargerAvailable", label: "Original charger", type: "BOOLEAN", required: true, sortOrder: 10 },
-    { categorySlug: "mobiles", key: "earphonesAvailable", label: "Earphones / accessories", type: "BOOLEAN", sortOrder: 11 },
-    { categorySlug: "mobiles", key: "invoiceAvailable", label: "Purchase invoice", type: "BOOLEAN", required: true, sortOrder: 12 },
-    { categorySlug: "mobiles", key: "warranty", label: "Warranty status", type: "SELECT", options: ["No warranty", "Manufacturer warranty left", "Extended warranty", "Brand care / insured"], required: true, sortOrder: 13 },
-    { categorySlug: "mobiles", key: "warrantyMonthsLeft", label: "Warranty months left", type: "NUMBER", sortOrder: 14 },
-    { categorySlug: "mobiles", key: "repairHistory", label: "Repair history", type: "SELECT", options: ["Never repaired", "Minor repair", "Screen replaced", "Battery replaced", "Major repair"], required: true, sortOrder: 15 },
-    { categorySlug: "mobiles", key: "imeiVerified", label: "IMEI verified", type: "BOOLEAN", sortOrder: 16 },
-    { categorySlug: "mobiles", key: "purchasedFrom", label: "Purchased from", type: "SELECT", options: ["Official store", "Amazon / Flipkart", "Local retailer", "Other"], sortOrder: 17 },
-    { categorySlug: "laptops", key: "ram", label: "RAM", type: "SELECT", options: ["8GB", "16GB", "32GB", "64GB"], required: true, sortOrder: 1 },
-    { categorySlug: "laptops", key: "storage", label: "Storage", type: "SELECT", options: ["256GB", "512GB", "1TB", "2TB"], required: true, sortOrder: 2 },
-    { categorySlug: "laptops", key: "cpu", label: "Processor", type: "TEXT", sortOrder: 3 },
-    { categorySlug: "laptops", key: "gpu", label: "Graphics", type: "TEXT", sortOrder: 4 },
-    { categorySlug: "laptops", key: "screen_size", label: "Screen size", type: "NUMBER", unit: "inch", sortOrder: 5 },
-    { categorySlug: "cars", key: "year", label: "Year", type: "NUMBER", required: true, sortOrder: 1 },
-    { categorySlug: "cars", key: "km_driven", label: "Kilometres driven", type: "NUMBER", unit: "km", required: true, sortOrder: 2 },
-    { categorySlug: "cars", key: "fuel", label: "Fuel", type: "SELECT", options: ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"], required: true, sortOrder: 3 },
-    { categorySlug: "cars", key: "transmission", label: "Transmission", type: "SELECT", options: ["Manual", "AMT", "AT", "CVT"], sortOrder: 4 },
-    { categorySlug: "cars", key: "owners", label: "Owners", type: "SELECT", options: ["1", "2", "3+"], sortOrder: 5 },
-  ];
+  console.log("Seeding category attributes from marketplace tree...");
 
-  for (const d of defs) {
-    const categoryId = categoryIds.get(d.categorySlug);
-    if (!categoryId) continue;
-    await prisma.categoryAttribute.upsert({
-      where: { categoryId_key: { categoryId, key: d.key } },
-      create: {
-        categoryId,
-        key: d.key,
-        label: d.label,
-        type: d.type,
-        options: d.options ?? [],
-        required: d.required ?? false,
-        unit: d.unit,
-        sortOrder: d.sortOrder,
-      },
-      update: {
-        label: d.label,
-        type: d.type,
-        options: d.options ?? [],
-        required: d.required ?? false,
-        unit: d.unit,
-        sortOrder: d.sortOrder,
-      },
-    });
+  async function seedAttrs(node: CategorySeedNode) {
+    const categoryId = categoryIds.get(node.slug);
+    if (categoryId && node.attributes?.length) {
+      for (let i = 0; i < node.attributes.length; i++) {
+        const a = node.attributes[i]!;
+        await prisma.categoryAttribute.upsert({
+          where: { categoryId_key: { categoryId, key: a.key } },
+          create: {
+            categoryId,
+            key: a.key,
+            label: a.label,
+            type: a.type as AttributeType,
+            options: a.options ?? [],
+            required: a.required ?? false,
+            unit: a.unit ?? null,
+            sortOrder: i + 1,
+          },
+          update: {
+            label: a.label,
+            type: a.type as AttributeType,
+            options: a.options ?? [],
+            required: a.required ?? false,
+            unit: a.unit ?? null,
+            sortOrder: i + 1,
+          },
+        });
+      }
+    }
+    for (const child of node.children ?? []) {
+      await seedAttrs(child);
+    }
+  }
+
+  for (const root of MARKETPLACE_CATEGORY_TREE) {
+    await seedAttrs(root);
+  }
+}
+
+async function seedLocations() {
+  console.log("Seeding city areas...");
+  for (const city of CITIES) {
+    const slugBase = city.city.toLowerCase().replace(/\s+/g, "-");
+    const areas = CITY_AREAS[slugBase] ?? ["Central", "North", "South"];
+    for (const area of areas) {
+      const slug = `${slugBase}-${area.toLowerCase().replace(/\s+/g, "-")}`;
+      await prisma.location.upsert({
+        where: { slug },
+        create: {
+          country: "IN",
+          state: city.state,
+          city: city.city,
+          area,
+          lat: city.lat + (Math.random() - 0.5) * 0.05,
+          lng: city.lng + (Math.random() - 0.5) * 0.05,
+          slug,
+          isActive: true,
+        },
+        update: {
+          state: city.state,
+          city: city.city,
+          area,
+          isActive: true,
+        },
+      });
+    }
   }
 }
 
@@ -947,6 +955,7 @@ async function seedListings(
         status: ListingStatus.ACTIVE,
         city: loc.city,
         state: loc.state,
+        area: pick(CITY_AREAS[loc.city.toLowerCase().replace(/\s+/g, "-")] ?? ["Central"], n),
         lat: loc.lat,
         lng: loc.lng,
         approximateArea: loc.city,
@@ -1338,6 +1347,7 @@ async function main() {
   await clearDemoData();
   const categoryIds = await seedCategories();
   await seedCategoryAttributes(categoryIds);
+  await seedLocations();
   const userCtx = await seedUsers();
   const products = await seedProducts(categoryIds);
   await seedMarketData(products);

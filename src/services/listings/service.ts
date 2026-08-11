@@ -1,4 +1,4 @@
-import type { ListingStatus, Prisma } from "@prisma/client";
+﻿import type { ListingStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { NotFoundError, ForbiddenError } from "@/lib/api/errors";
 import { slugify } from "@/lib/utils";
@@ -15,7 +15,11 @@ export type CreateListingInput = {
   variantId?: string;
   city?: string;
   state?: string;
+  area?: string;
   postalCode?: string;
+  lat?: number;
+  lng?: number;
+  sellerType?: "INDIVIDUAL" | "BUSINESS";
   originalPriceInr?: number;
   attributes?: Array<{ key: string; value: string }>;
   images?: Array<{
@@ -57,7 +61,11 @@ export class ListingsService {
         conditionGrade: input.conditionGrade ?? "GOOD",
         city: input.city,
         state: input.state,
+        area: input.area,
         postalCode: input.postalCode,
+        lat: input.lat,
+        lng: input.lng,
+        sellerType: input.sellerType ?? "INDIVIDUAL",
         status: "DRAFT",
         attributes: input.attributes
           ? {
@@ -189,8 +197,17 @@ export class ListingsService {
         ...(input.variantId !== undefined ? { variantId: input.variantId } : {}),
         ...(input.city !== undefined ? { city: input.city } : {}),
         ...(input.state !== undefined ? { state: input.state } : {}),
+        ...(input.area !== undefined ? { area: input.area } : {}),
         ...(input.postalCode !== undefined ? { postalCode: input.postalCode } : {}),
-        ...(input.status ? { status: input.status } : {}),
+        ...(input.status
+          ? {
+              status: input.status,
+              ...(input.status === "SOLD" ? { soldAt: new Date() } : {}),
+              ...(input.status === "ACTIVE"
+                ? { publishedAt: existing.publishedAt ?? new Date() }
+                : {}),
+            }
+          : {}),
       },
       include: { images: true, attributes: true, category: true },
     });
