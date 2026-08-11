@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --background-muted: #f7f8fc;
+  --foreground: #0b1220;
+  --foreground-muted: #6b7280;
+  --primary: #1b4dff;
+  --primary-bright: #2563ff;
+  --primary-foreground: #ffffff;
+  --accent: #b8ff3c;
+  --accent-bright: #c8ff5a;
+  --accent-foreground: #0b1220;
+  --border: #e5e7ef;
+  --ring: #1b4dff;
+  --destructive: #ef4444;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --card: #ffffff;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-muted: var(--background-muted);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-primary: var(--primary);
+  --color-primary-bright: var(--primary-bright);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-card: var(--card);
+  --color-muted: var(--background-muted);
+  --color-muted-foreground: var(--foreground-muted);
+  --color-secondary: #eef1fb;
+  --color-secondary-foreground: var(--foreground);
+  --color-input: var(--border);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--foreground);
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgb(27 77 255 / 0.06), transparent),
+      linear-gradient(to bottom, #ffffff, #f7f8fc);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  ::selection {
+    background: rgb(27 77 255 / 0.18);
+    color: var(--foreground);
+  }
+}
+
+@layer utilities {
+  .hero-blue {
+    background:
+      radial-gradient(ellipse 70% 80% at 20% 20%, rgb(37 99 255 / 0.45), transparent 55%),
+      radial-gradient(ellipse 60% 70% at 85% 15%, rgb(184 255 60 / 0.18), transparent 50%),
+      linear-gradient(145deg, #0a1f8a 0%, #1b4dff 42%, #2563ff 78%, #1a3fd4 100%);
+  }
+
+  .cta-lime {
+    @apply bg-accent text-accent-foreground font-semibold;
+    box-shadow: 0 8px 24px rgb(184 255 60 / 0.35);
+    transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  }
+
+  .cta-lime:hover {
+    background: var(--accent-bright);
+    box-shadow: 0 10px 28px rgb(184 255 60 / 0.45);
+  }
+
+  .glass-card {
+    @apply rounded-2xl border border-white/40 bg-white/80 shadow-lg backdrop-blur-xl;
+    box-shadow:
+      0 1px 2px rgb(11 18 32 / 0.04),
+      0 12px 40px rgb(27 77 255 / 0.08);
+  }
+
+  .price-meter {
+    @apply relative overflow-hidden rounded-xl;
+    background: linear-gradient(
+      90deg,
+      #16a34a 0%,
+      #86efac 22%,
+      #b8ff3c 38%,
+      #facc15 55%,
+      #fb923c 72%,
+      #ef4444 100%
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

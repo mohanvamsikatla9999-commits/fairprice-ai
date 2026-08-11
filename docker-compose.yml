@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fairprice-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fairprice
+      POSTGRES_PASSWORD: fairprice
+      POSTGRES_DB: fairprice_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - fairprice_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fairprice -d fairprice_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: fairprice-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    profiles:
+      - redis
+    volumes:
+      - fairprice_redis_data:/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fairprice-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://fairprice:fairprice@postgres:5432/fairprice_ai?schema=public
+      APP_URL: http://localhost:3000
+      AUTH_SECRET: fairprice-docker-secret-change-in-production
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen3.5:9b
+      AI_PROVIDER: auto
+      DEMO_MODE: "true"
+      STORAGE_PROVIDER: local
+      PAYMENT_PROVIDER: mock
+      EMAIL_PROVIDER: mock
+      SMS_PROVIDER: mock
+      MAPS_PROVIDER: mock
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full
+    volumes:
+      - ./storage:/app/storage
+
+volumes:
+  fairprice_pg_data:
+  fairprice_redis_data:

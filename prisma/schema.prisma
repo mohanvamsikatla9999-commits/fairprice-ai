@@ -1,0 +1,1479 @@
+// FairPrice AI — Prisma Schema
+// India's AI-powered marketplace for smarter, safer reselling
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  SELLER
+  BUYER
+  BUSINESS
+  MODERATOR
+  SUPPORT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum VerificationLevel {
+  BASIC
+  PHONE_VERIFIED
+  EMAIL_VERIFIED
+  IDENTITY_VERIFIED
+  FACE_VERIFIED
+  TRUSTED_SELLER
+  BUSINESS_VERIFIED
+}
+
+enum IdvStatus {
+  NOT_STARTED
+  CONSENT_REQUIRED
+  IN_PROGRESS
+  DOCUMENT_PENDING
+  FACE_PENDING
+  LIVENESS_PENDING
+  REVIEW_REQUIRED
+  VERIFIED
+  FAILED
+  EXPIRED
+  REVOKED
+  SUSPENDED
+}
+
+enum IdvReviewStatus {
+  OPEN
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  ESCALATED
+  CLOSED
+}
+
+enum IdvAttemptOutcome {
+  STARTED
+  CONSENT_GIVEN
+  CAPTURED
+  LIVENESS_PASSED
+  LIVENESS_FAILED
+  FACE_MATCH_PASSED
+  FACE_MATCH_FAILED
+  SPOOF_DETECTED
+  RATE_LIMITED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum IdvRiskClass {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  SOLD
+  EXPIRED
+  REJECTED
+  DELETED
+}
+
+enum ConditionGrade {
+  LIKE_NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum PriceVerdict {
+  UNDERPRICED
+  FAIR
+  SLIGHTLY_HIGH
+  OVERPRICED
+  UNKNOWN
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum TransactionStatus {
+  INTERESTED
+  OFFER_SENT
+  OFFER_ACCEPTED
+  MEETING_PLANNED
+  INSPECTION
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  ITEM_HANDOVER
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTION_TAKEN
+  DISMISSED
+  ESCALATED
+}
+
+enum ReportTargetType {
+  LISTING
+  SELLER
+  BUYER
+  MESSAGE
+  REVIEW
+  FRAUD
+  COUNTERFEIT
+  PROHIBITED_ITEM
+  SPAM
+  HARASSMENT
+  MISLEADING
+  WRONG_PRICE
+  STOLEN_ITEM
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ModerationDecision {
+  ALLOW
+  REVIEW
+  BLOCK
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+  SUSPENDED
+  BANNED
+  ESCALATED
+  MARKED_SAFE
+}
+
+enum NotificationType {
+  NEW_MESSAGE
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  COUNTER_OFFER
+  PRICE_DROP
+  LISTING_SOLD
+  LISTING_EXPIRING
+  VALUATION_COMPLETED
+  FRAUD_WARNING
+  VERIFICATION_UPDATE
+  REPORT_UPDATE
+  SAVED_SEARCH_MATCH
+  RECOMMENDATION
+  SYSTEM
+}
+
+enum PromotionType {
+  FEATURED
+  BOOST
+  TOP_PLACEMENT
+  URGENT_SALE
+  AI_RECOMMENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  SELECT
+  MULTI_SELECT
+  BOOLEAN
+  DATE
+}
+
+// ─── Auth & Users ────────────────────────────────────────────────────────────
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  emailVerified     DateTime?
+  phone             String?           @unique
+  phoneVerified     DateTime?
+  passwordHash      String?
+  googleId          String?           @unique
+  authProvider      String            @default("email")
+  name              String?
+  displayName       String?
+  avatarUrl         String?
+  role              Role              @default(USER)
+  verificationLevel VerificationLevel @default(BASIC)
+  trustScore        Int               @default(50)
+  sellerTrustScore  Int               @default(50)
+  buyerTrustScore   Int               @default(50)
+  identityVerifiedAt DateTime?
+  faceVerifiedAt     DateTime?
+  livenessVerifiedAt DateTime?
+  verificationLockedUntil DateTime?
+  verificationFailureCount Int        @default(0)
+  requiresReverification Boolean      @default(false)
+  isBlocked         Boolean           @default(false)
+  isSuspended       Boolean           @default(false)
+  suspendedUntil    DateTime?
+  suspendedReason   String?
+  onboardingDone    Boolean           @default(false)
+  preferredCategories String[]        @default([])
+  interests         String[]          @default([])
+  bio               String?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  loginCount        Int               @default(0)
+  deletedAt         DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  profile           Profile?
+  sessions          Session[]
+  verifications     Verification[]
+  devices           Device[]
+  listings          Listing[]
+  favorites         Favorite[]
+  savedSearches     SavedSearch[]
+  priceAlerts       PriceAlert[]
+  conversationsAsBuyer  Conversation[] @relation("BuyerConversations")
+  conversationsAsSeller Conversation[] @relation("SellerConversations")
+  messages          Message[]
+  offersSent        Offer[]           @relation("OffersSent")
+  offersReceived    Offer[]           @relation("OffersReceived")
+  transactionsAsBuyer  Transaction[]  @relation("BuyerTransactions")
+  transactionsAsSeller Transaction[]  @relation("SellerTransactions")
+  reviewsGiven      Review[]          @relation("ReviewsGiven")
+  reviewsReceived   Review[]          @relation("ReviewsReceived")
+  reportsFiled      Report[]          @relation("ReportsFiled")
+  reportsAgainst    Report[]          @relation("ReportsAgainst")
+  blocksInitiated   Block[]           @relation("BlocksInitiated")
+  blocksReceived    Block[]           @relation("BlocksReceived")
+  fraudRisks        FraudRisk[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  valuations        Valuation[]
+  businessAccount   BusinessAccount?
+  apiKeys           APIKey[]
+  supportTickets    SupportTicket[]
+  payments          Payment[]
+  promotions        Promotion[]
+  conditionAssessments ConditionAssessment[]
+  moderationCases   ModerationCase[]  @relation("ModerationAssignee")
+  viewHistory       ListingView[]
+  identityVerifications IdentityVerification[]
+  verificationConsents  VerificationConsent[]
+  verificationReviews   VerificationReviewCase[] @relation("VerificationReviewSubject")
+  verificationReviewsAssigned VerificationReviewCase[] @relation("VerificationReviewer")
+  verificationAudits    VerificationAuditLog[]
+  accountLinksAsA       AccountLinkSignal[] @relation("AccountLinkA")
+  accountLinksAsB       AccountLinkSignal[] @relation("AccountLinkB")
+
+  @@index([email])
+  @@index([role])
+  @@index([trustScore])
+  @@index([verificationLevel])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  country         String   @default("IN")
+  state           String?
+  city            String?
+  postalCode      String?
+  approximateLat  Float?
+  approximateLng  Float?
+  showExactLocation Boolean @default(false)
+  responseRate    Float    @default(0)
+  avgResponseMins Int      @default(0)
+  completedSales  Int      @default(0)
+  completedPurchases Int   @default(0)
+  memberSince     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([city, state])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  deviceId     String?
+  /// Set when face+liveness passes for this login session (sign-in only flow)
+  signinFaceVerifiedAt DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Verification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([tokenHash])
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  userId      String
+  fingerprint String
+  name        String?
+  platform    String?
+  lastSeenAt  DateTime @default(now())
+  trusted     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fingerprint])
+  @@index([userId])
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  parentId    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent     Category?            @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[]           @relation("CategoryTree")
+  attributes CategoryAttribute[]
+  products   Product[]
+  listings   Listing[]
+
+  @@index([parentId])
+  @@index([slug])
+}
+
+model CategoryAttribute {
+  id          String        @id @default(cuid())
+  categoryId  String
+  key         String
+  label       String
+  type        AttributeType @default(TEXT)
+  options     String[]      @default([])
+  required    Boolean       @default(false)
+  unit        String?
+  minValue    Float?
+  maxValue    Float?
+  sortOrder   Int           @default(0)
+  helpText    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, key])
+  @@index([categoryId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  categoryId  String
+  brand       String
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category  Category         @relation(fields: [categoryId], references: [id])
+  variants  ProductVariant[]
+  listings  Listing[]
+  snapshots MarketPriceSnapshot[]
+  demand    DemandSnapshot[]
+
+  @@index([categoryId])
+  @@index([brand])
+  @@index([name])
+}
+
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  name          String
+  sku           String?  @unique
+  attributes    Json     @default("{}")
+  msrpInr       Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product    Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  listings   Listing[]
+  snapshots  MarketPriceSnapshot[]
+  comparables ComparableListing[]
+  priceHistory PriceHistory[]
+
+  @@index([productId])
+}
+
+// ─── Listings ────────────────────────────────────────────────────────────────
+
+model Listing {
+  id              String        @id @default(cuid())
+  sellerId        String
+  categoryId      String
+  productId       String?
+  variantId       String?
+  title           String
+  slug            String        @unique
+  description     String
+  priceInr        Int
+  originalPriceInr Int?
+  conditionGrade  ConditionGrade @default(GOOD)
+  status          ListingStatus @default(DRAFT)
+  city            String?
+  state           String?
+  postalCode      String?
+  lat             Float?
+  lng             Float?
+  approximateArea String?
+  views           Int           @default(0)
+  uniqueViews     Int           @default(0)
+  favoriteCount   Int           @default(0)
+  isFeatured      Boolean       @default(false)
+  isBoosted       Boolean       @default(false)
+  isAiVerified    Boolean       @default(false)
+  priceDropFrom   Int?
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  soldAt          DateTime?
+  deletedAt       DateTime?
+  moderationDecision ModerationDecision @default(ALLOW)
+  riskScore       Int           @default(0)
+  riskLevel       RiskLevel     @default(LOW)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  seller      User                 @relation(fields: [sellerId], references: [id])
+  category    Category             @relation(fields: [categoryId], references: [id])
+  product     Product?             @relation(fields: [productId], references: [id])
+  variant     ProductVariant?      @relation(fields: [variantId], references: [id])
+  images      ListingImage[]
+  attributes  ListingAttribute[]
+  condition   ConditionAssessment?
+  valuations  Valuation[]
+  favorites   Favorite[]
+  conversations Conversation[]
+  offers      Offer[]
+  transactions Transaction[]
+  reports     Report[]
+  promotions  Promotion[]
+  views_log   ListingView[]
+  moderationCases ModerationCase[]
+  priceHistory PriceHistory[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([priceInr])
+  @@index([city, state])
+  @@index([publishedAt])
+  @@index([isFeatured, isBoosted])
+  @@index([riskLevel])
+  @@index([deletedAt])
+}
+
+model ListingImage {
+  id         String   @id @default(cuid())
+  listingId  String
+  storageKey String
+  url        String
+  alt        String?
+  sortOrder  Int      @default(0)
+  width      Int?
+  height     Int?
+  mimeType   String?
+  sizeBytes  Int?
+  hash       String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([hash])
+}
+
+model ListingAttribute {
+  id        String   @id @default(cuid())
+  listingId String
+  key       String
+  value     String
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, key])
+  @@index([listingId])
+  @@index([key, value])
+}
+
+model ListingView {
+  id        String   @id @default(cuid())
+  listingId String
+  userId    String?
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([listingId, createdAt])
+  @@index([userId])
+}
+
+// ─── AI Valuation & Condition ────────────────────────────────────────────────
+
+model ConditionAssessment {
+  id               String         @id @default(cuid())
+  listingId        String         @unique
+  userId           String?
+  score            Int
+  grade            ConditionGrade
+  confidence       Float
+  visibleDamage    String[]       @default([])
+  scratches        String?
+  dents            String?
+  cracks           String?
+  screenCondition  String?
+  bodyCondition    String?
+  wear             String?
+  missingAccessories String[]     @default([])
+  cleanliness      String?
+  modifications    String?
+  suspiciousPatterns String[]     @default([])
+  explanation      String
+  insufficientQuality Boolean     @default(false)
+  rawAiResponse    Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}
+
+model Valuation {
+  id                    String       @id @default(cuid())
+  listingId             String?
+  userId                String?
+  productLabel          String?
+  fairValueMinInr       Int
+  fairValueMaxInr       Int
+  fairValueMidInr       Int
+  recommendedListingInr Int
+  expectedSaleMinInr    Int
+  expectedSaleMaxInr    Int
+  quickSaleInr          Int
+  conditionScore        Int
+  priceConfidence       Float
+  marketDemandScore     Float
+  marketLiquidity       Float
+  depreciationEstimate  Float?
+  marketTrend           String?
+  verdict               PriceVerdict @default(UNKNOWN)
+  buyerVerdict          String?
+  sellerRecommendation  String?
+  negotiationMinInr     Int?
+  negotiationMaxInr     Int?
+  explanation           String
+  sellerPriceInr        Int?
+  factors               Json?
+  comparableCount       Int          @default(0)
+  promptVersion         String       @default("v1")
+  engineVersion         String       @default("v1")
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  listing Listing?          @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  user    User?             @relation(fields: [userId], references: [id])
+  factorRows ValuationFactor[]
+
+  @@index([listingId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ValuationFactor {
+  id           String  @id @default(cuid())
+  valuationId  String
+  name         String
+  impactInr    Int
+  impactPct    Float?
+  description  String?
+  createdAt    DateTime @default(now())
+
+  valuation Valuation @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+
+  @@index([valuationId])
+}
+
+model MarketPriceSnapshot {
+  id            String   @id @default(cuid())
+  productId     String?
+  variantId     String?
+  source        String
+  medianInr     Int
+  p25Inr        Int?
+  p75Inr        Int?
+  minInr        Int?
+  maxInr        Int?
+  sampleSize    Int      @default(0)
+  location      String?
+  conditionGrade ConditionGrade?
+  capturedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([productId, capturedAt])
+  @@index([variantId, capturedAt])
+  @@index([source])
+}
+
+model ComparableListing {
+  id             String         @id @default(cuid())
+  variantId      String?
+  externalId     String?
+  source         String
+  title          String
+  priceInr       Int
+  conditionGrade ConditionGrade?
+  city           String?
+  state          String?
+  ageMonths      Int?
+  soldAt         DateTime?
+  listedAt       DateTime?
+  url            String?
+  attributes     Json?
+  isSynthetic    Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([variantId])
+  @@index([source])
+  @@index([priceInr])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  listingId String?
+  variantId String?
+  priceInr  Int
+  source    String
+  recordedAt DateTime @default(now())
+
+  listing Listing?        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([listingId, recordedAt])
+  @@index([variantId, recordedAt])
+}
+
+model DemandSnapshot {
+  id         String   @id @default(cuid())
+  productId  String?
+  categoryId String?
+  location   String?
+  demandScore Float
+  searchVolume Int?
+  listingCount Int?
+  soldCount   Int?
+  capturedAt  DateTime @default(now())
+
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([productId, capturedAt])
+  @@index([categoryId])
+}
+
+// ─── Social / Discovery ──────────────────────────────────────────────────────
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String?
+  query       String?
+  filters     Json     @default("{}")
+  alertEnabled Boolean @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PriceAlert {
+  id              String   @id @default(cuid())
+  userId          String
+  listingId       String?
+  categorySlug    String?
+  productQuery    String?
+  targetPriceInr  Int?
+  maxPriceInr     Int?
+  minCondition    ConditionGrade?
+  radiusKm        Int?
+  city            String?
+  notifyOnDrop    Boolean  @default(true)
+  notifyOnNew     Boolean  @default(true)
+  notifyOnFair    Boolean  @default(false)
+  notifyOnUnder   Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+// ─── Chat & Offers ───────────────────────────────────────────────────────────
+
+model Conversation {
+  id         String   @id @default(cuid())
+  listingId  String
+  buyerId    String
+  sellerId   String
+  lastMessageAt DateTime?
+  buyerArchived Boolean @default(false)
+  sellerArchived Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  listing  Listing   @relation(fields: [listingId], references: [id])
+  buyer    User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  seller   User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  messages Message[]
+  offers   Offer[]
+
+  @@unique([listingId, buyerId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  imageUrl       String?
+  offerId        String?
+  isSystem       Boolean  @default(false)
+  riskScore      Int      @default(0)
+  riskFlags      String[] @default([])
+  safetyWarning  String?
+  readAt         DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model Offer {
+  id             String      @id @default(cuid())
+  listingId      String
+  conversationId String?
+  buyerId        String
+  sellerId       String
+  amountInr      Int
+  message        String?
+  status         OfferStatus @default(PENDING)
+  parentOfferId  String?
+  expiresAt      DateTime
+  respondedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  listing      Listing       @relation(fields: [listingId], references: [id])
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+  buyer        User          @relation("OffersSent", fields: [buyerId], references: [id])
+  seller       User          @relation("OffersReceived", fields: [sellerId], references: [id])
+  parent       Offer?        @relation("OfferChain", fields: [parentOfferId], references: [id])
+  counters     Offer[]       @relation("OfferChain")
+  history      OfferHistory[]
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model OfferHistory {
+  id        String      @id @default(cuid())
+  offerId   String
+  amountInr Int
+  status    OfferStatus
+  actorId   String?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId])
+}
+
+// ─── Transactions ────────────────────────────────────────────────────────────
+
+model Transaction {
+  id          String            @id @default(cuid())
+  listingId   String
+  buyerId     String
+  sellerId    String
+  offerId     String?
+  amountInr   Int?
+  status      TransactionStatus @default(INTERESTED)
+  paymentId   String?
+  notes       String?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  listing Listing  @relation(fields: [listingId], references: [id])
+  buyer   User     @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller  User     @relation("SellerTransactions", fields: [sellerId], references: [id])
+  meeting Meeting?
+  reviews Review[]
+  payments Payment[]
+
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+model Meeting {
+  id              String   @id @default(cuid())
+  transactionId   String   @unique
+  scheduledAt     DateTime
+  locationLabel   String
+  locationLat     Float?
+  locationLng     Float?
+  notes           String?
+  safetyAcknowledged Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  transactionId String
+  reviewerId    String
+  revieweeId    String
+  rating        Int
+  body          String?
+  isVerified    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  reviewer    User        @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  reviewee    User        @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  @@unique([transactionId, reviewerId])
+  @@index([revieweeId])
+}
+
+// ─── Trust & Safety ──────────────────────────────────────────────────────────
+
+model Report {
+  id          String           @id @default(cuid())
+  reporterId  String
+  targetUserId String?
+  listingId   String?
+  messageId   String?
+  targetType  ReportTargetType
+  reason      String
+  details     String?
+  status      ReportStatus     @default(OPEN)
+  resolution  String?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  reporter   User     @relation("ReportsFiled", fields: [reporterId], references: [id])
+  targetUser User?    @relation("ReportsAgainst", fields: [targetUserId], references: [id])
+  listing    Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([targetUserId])
+  @@index([listingId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksInitiated", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model FraudRisk {
+  id        String    @id @default(cuid())
+  userId    String?
+  listingId String?
+  score     Int
+  level     RiskLevel
+  summary   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user    User?         @relation(fields: [userId], references: [id])
+  signals FraudSignal[]
+
+  @@index([userId])
+  @@index([level])
+  @@index([score])
+}
+
+model FraudSignal {
+  id          String   @id @default(cuid())
+  fraudRiskId String
+  signalType  String
+  weight      Int
+  evidence    Json?
+  createdAt   DateTime @default(now())
+
+  fraudRisk FraudRisk @relation(fields: [fraudRiskId], references: [id], onDelete: Cascade)
+
+  @@index([fraudRiskId])
+  @@index([signalType])
+}
+
+model ModerationCase {
+  id          String           @id @default(cuid())
+  listingId   String?
+  userId      String?
+  assigneeId  String?
+  riskLevel   RiskLevel        @default(MEDIUM)
+  status      ModerationStatus @default(PENDING)
+  reason      String?
+  notes       String?
+  decision    ModerationDecision?
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  listing  Listing? @relation(fields: [listingId], references: [id])
+  assignee User?    @relation("ModerationAssignee", fields: [assigneeId], references: [id])
+
+  @@index([status, riskLevel])
+  @@index([listingId])
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  href      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+// ─── Monetization ────────────────────────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(cuid())
+  userId        String
+  transactionId String?
+  provider      String
+  providerRef   String?
+  amountInr     Int
+  currency      String        @default("INR")
+  status        PaymentStatus @default(PENDING)
+  purpose       String
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Promotion {
+  id        String        @id @default(cuid())
+  userId    String
+  listingId String?
+  type      PromotionType
+  startsAt  DateTime
+  endsAt    DateTime
+  amountInr Int?
+  status    String        @default("active")
+  createdAt DateTime      @default(now())
+
+  user    User     @relation(fields: [userId], references: [id])
+  listing Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([listingId])
+  @@index([type, endsAt])
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  plan      String
+  status    String
+  startsAt  DateTime
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Coupon {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  discountPct Int?
+  discountInr Int?
+  maxUses   Int?
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+// ─── Business / B2B API ──────────────────────────────────────────────────────
+
+model BusinessAccount {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  companyName String
+  gstin       String?
+  website     String?
+  plan        String   @default("free")
+  monthlyQuota Int     @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model APIKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique
+  keyPrefix  String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  scopes     String[]  @default(["valuation:read"])
+  createdAt  DateTime  @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usage APIUsage[]
+
+  @@index([userId])
+  @@index([keyHash])
+}
+
+model APIUsage {
+  id        String   @id @default(cuid())
+  apiKeyId  String
+  endpoint  String
+  status    Int
+  latencyMs Int?
+  createdAt DateTime @default(now())
+
+  apiKey APIKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt])
+}
+
+// ─── Content & Support ───────────────────────────────────────────────────────
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  excerpt     String?
+  content     String
+  coverUrl    String?
+  authorName  String    @default("FairPrice AI Team")
+  publishedAt DateTime?
+  isPublished Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([publishedAt])
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  category  String
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  userId    String
+  subject   String
+  body      String
+  status    TicketStatus @default(OPEN)
+  priority  String       @default("normal")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  ipAddress  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+}
+
+// ─── FairPrice ID — Identity & Face Verification ─────────────────────────────
+
+model IdentityVerification {
+  id                   String       @id @default(cuid())
+  userId               String
+  status               IdvStatus    @default(NOT_STARTED)
+  provider             String       @default("mock")
+  providerSessionId    String?
+  providerReferenceId  String?
+  method               String       @default("face_liveness")
+  /// Separated capability flags — never collapsed into one fake score
+  documentChecked      Boolean      @default(false)
+  faceDetected         Boolean      @default(false)
+  faceQualityOk        Boolean      @default(false)
+  livenessPassed       Boolean      @default(false)
+  faceMatchPassed      Boolean      @default(false)
+  identityVerified     Boolean      @default(false)
+  riskClass            IdvRiskClass @default(LOW)
+  /// Opaque risk bucket for admins — not a user-facing "face score"
+  failureReasonCode    String?
+  failureMessage       String?
+  isDevelopment        Boolean      @default(false)
+  consentId            String?
+  expiresAt            DateTime?
+  completedAt          DateTime?
+  revokedAt            DateTime?
+  revokedReason        String?
+  metadata             Json?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consent  VerificationConsent?   @relation(fields: [consentId], references: [id])
+  attempts VerificationAttempt[]
+  events   VerificationEvent[]
+  reviews  VerificationReviewCase[]
+
+  @@index([userId, status])
+  @@index([providerSessionId])
+  @@index([providerReferenceId])
+  @@index([status, createdAt])
+  @@index([expiresAt])
+}
+
+model VerificationAttempt {
+  id               String            @id @default(cuid())
+  verificationId   String
+  userId           String
+  outcome          IdvAttemptOutcome
+  challengeType    String?
+  clientSignals    Json?
+  /// Server-evaluated spoof/risk signals only — never trust client claims
+  serverSignals    Json?
+  ipAddress        String?
+  userAgent        String?
+  deviceTokenHash  String?
+  errorCode        String?
+  createdAt        DateTime          @default(now())
+
+  verification IdentityVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  @@index([verificationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([outcome])
+}
+
+model VerificationReviewCase {
+  id             String          @id @default(cuid())
+  userId         String
+  verificationId String
+  reason         String
+  status         IdvReviewStatus @default(OPEN)
+  reviewerId     String?
+  decision       String?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user         User                 @relation("VerificationReviewSubject", fields: [userId], references: [id], onDelete: Cascade)
+  verification IdentityVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  reviewer     User?                @relation("VerificationReviewer", fields: [reviewerId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([verificationId])
+}
+
+model VerificationEvent {
+  id               String   @id @default(cuid())
+  verificationId   String?
+  userId           String?
+  providerEventId  String?  @unique
+  eventType        String
+  payload          Json?
+  signatureValid   Boolean  @default(false)
+  processedAt      DateTime?
+  createdAt        DateTime @default(now())
+
+  verification IdentityVerification? @relation(fields: [verificationId], references: [id], onDelete: SetNull)
+
+  @@index([verificationId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model VerificationProviderAccount {
+  id           String   @id @default(cuid())
+  provider     String   @unique
+  isActive     Boolean  @default(true)
+  isMock       Boolean  @default(false)
+  config       Json?
+  webhookSecretEncrypted String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VerificationConsent {
+  id                   String   @id @default(cuid())
+  userId               String
+  version              String
+  consentedAt          DateTime @default(now())
+  ipAddress            String?
+  userAgent            String?
+  biometricProcessing  Boolean  @default(true)
+  retentionAcknowledged Boolean @default(true)
+  withdrawnAt          DateTime?
+  createdAt            DateTime @default(now())
+
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verifications  IdentityVerification[]
+
+  @@index([userId, consentedAt])
+}
+
+model VerificationAuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  actorId    String?
+  action     String
+  entityType String?
+  entityId   String?
+  ipAddress  String?
+  /// Never store biometric material here
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+}
+
+model VerificationPolicy {
+  id                          String   @id @default(cuid())
+  key                         String   @unique @default("default")
+  highValueListingInr         Int      @default(50000)
+  enhancedValueListingInr     Int      @default(100000)
+  requireIdentityAboveInr     Int      @default(50000)
+  requireFaceAboveInr         Int?     
+  maxAttemptsPerHour          Int      @default(3)
+  maxAttemptsPerDay           Int      @default(8)
+  cooldownMinutesAfterFail    Int      @default(30)
+  lockMinutesAfterRepeatedFail Int     @default(1440)
+  failuresBeforeLock          Int      @default(3)
+  sessionTtlMinutes           Int      @default(30)
+  metadataRetentionDays       Int      @default(365)
+  tempCaptureRetentionMinutes Int      @default(15)
+  buyerMinLevel               String   @default("EMAIL_VERIFIED")
+  sellerMinLevel              String   @default("PHONE_VERIFIED")
+  highVolumeSellerMinLevel    String   @default("IDENTITY_VERIFIED")
+  businessMinLevel            String   @default("BUSINESS_VERIFIED")
+  updatedAt                   DateTime @updatedAt
+  createdAt                   DateTime @default(now())
+}
+
+model AccountLinkSignal {
+  id           String   @id @default(cuid())
+  userAId      String
+  userBId      String
+  signalType   String
+  strength     Int      @default(1)
+  evidence     Json?
+  reviewed     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  userA User @relation("AccountLinkA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("AccountLinkB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId, signalType])
+  @@index([userAId])
+  @@index([userBId])
+  @@index([signalType])
+}
