@@ -51,6 +51,8 @@ type Uploaded = {
 
 export default function SellPage() {
   const router = useRouter();
+  const [authChecked, setAuthChecked] = React.useState(false);
+  const [authenticated, setAuthenticated] = React.useState(false);
   const [step, setStep] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -72,11 +74,37 @@ export default function SellPage() {
   const [publishedId, setPublishedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.ok || !json.data?.user) {
+          // Clear stale cookie from purged demo accounts
+          await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+          setAuthenticated(false);
+        } else {
+          setAuthenticated(true);
+        }
+      } catch {
+        if (!cancelled) setAuthenticated(false);
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!authenticated) return;
     void fetch("/api/categories")
       .then((r) => r.json())
       .then((j) => setTree(j.data?.categories ?? []))
       .catch(() => setError("Could not load categories"));
-  }, []);
+  }, [authenticated]);
 
   const root = tree.find((c) => c.slug === rootSlug);
   const sub = root?.children.find((c) => c.slug === subSlug) ?? null;
@@ -88,15 +116,25 @@ export default function SellPage() {
 
   const city = INDIA_CITIES.find((c) => c.slug === citySlug);
 
+  function requireLogin(message = "Please sign in to sell an item.") {
+    setError(message);
+    router.push(`/login?next=${encodeURIComponent("/sell")}`);
+  }
+
   async function uploadFiles(files: FileList | null) {
     if (!files?.length) return;
+    if (!authenticated) {
+      requireLogin("Sign in to upload photos.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
       const next: Uploaded[] = [...images];
       for (let i = 0; i < files.length; i++) {
         const file = files[i]!;
-        if (!["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type)) {
+        const type = file.type === "image/jpg" ? "image/jpeg" : file.type;
+        if (!["image/jpeg", "image/png", "image/webp"].includes(type)) {
           throw new Error("Only JPG, PNG, or WEBP images are allowed");
         }
         if (file.size > 8 * 1024 * 1024) {
@@ -107,12 +145,16 @@ export default function SellPage() {
         body.append("file", file);
         const res = await fetch("/api/upload", { method: "POST", body });
         const json = await res.json();
+        if (res.status === 401) {
+          requireLogin("Your session expired. Sign in again to upload photos.");
+          return;
+        }
         if (!res.ok) throw new Error(json.error?.message ?? "Upload failed");
         const fileData = json.data?.file ?? json.data;
         next.push({
           storageKey: fileData.storageKey ?? fileData.key,
           url: fileData.url,
-          mimeType: file.type,
+          mimeType: type,
           sizeBytes: file.size,
         });
         setUploadPct(Math.round(((i + 1) / files.length) * 100));
@@ -127,6 +169,10 @@ export default function SellPage() {
   }
 
   async function publish() {
+    if (!authenticated) {
+      requireLogin();
+      return;
+    }
     if (!selected) {
       setError("Choose a category");
       return;
@@ -160,6 +206,10 @@ export default function SellPage() {
         }),
       });
       const createJson = await createRes.json();
+      if (createRes.status === 401) {
+        requireLogin("Your session expired. Sign in again to publish.");
+        return;
+      }
       if (!createRes.ok) {
         throw new Error(createJson.error?.message ?? "Could not create listing");
       }
@@ -168,6 +218,10 @@ export default function SellPage() {
         method: "POST",
       });
       const pubJson = await pubRes.json();
+      if (pubRes.status === 401) {
+        requireLogin("Your session expired. Sign in again to publish.");
+        return;
+      }
       if (!pubRes.ok) {
         throw new Error(pubJson.error?.message ?? "Could not publish");
       }
@@ -186,6 +240,39 @@ export default function SellPage() {
     if (step === 3) return Number(priceInr) > 0;
     if (step === 4) return Boolean(city);
     return true;
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="container-page py-16 text-center text-sm text-foreground-muted">
+        Checking your session…
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="container-page py-16">
+        <PageHero
+          title="Sell an item"
+          description="Sign in to upload photos and publish a listing. No valuation is required."
+        />
+        <div className="mx-auto mt-8 max-w-md rounded-2xl border border-border bg-white p-6 text-center">
+          <p className="text-foreground-muted">
+            Your previous demo session is no longer valid. Create an account or sign in to
+            continue selling.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/login?next=%2Fsell">Sign in</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/register?next=%2Fsell">Create account</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (publishedId) {

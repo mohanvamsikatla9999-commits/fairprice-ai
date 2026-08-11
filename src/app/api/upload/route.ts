@@ -16,12 +16,15 @@ export async function POST(request: Request) {
     if (file.size > 8 * 1024 * 1024) {
       throw new ValidationError("File must be under 8MB");
     }
-    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(file.type)) {
       throw new ValidationError("Only JPEG, PNG, WebP, or GIF images allowed");
     }
 
-    const ext = file.type.split("/")[1] ?? "bin";
+    const ext =
+      file.type === "image/jpeg" || file.type === "image/jpg"
+        ? "jpg"
+        : file.type.split("/")[1] ?? "bin";
     const key = `listings/${user.id}/${nanoid(12)}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const storage = createStorageProvider();
