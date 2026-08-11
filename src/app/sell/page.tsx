@@ -236,10 +236,60 @@ export default function SellPage() {
   function canNext() {
     if (step === 0) return Boolean(selected);
     if (step === 1) return images.length > 0;
-    if (step === 2) return title.trim().length >= 3 && description.trim().length >= 10;
+    if (step === 2) {
+      if (title.trim().length < 3) return false;
+      if (description.trim().length < 10) return false;
+      for (const a of attributeDefs) {
+        if (a.required && !(attrs[a.key] ?? "").trim()) return false;
+      }
+      return true;
+    }
     if (step === 3) return Number(priceInr) > 0;
     if (step === 4) return Boolean(city);
     return true;
+  }
+
+  function nextBlockedReason(): string | null {
+    if (step === 0) {
+      if (!rootSlug) return "Choose a category to continue.";
+      if (root?.children?.length && !subSlug) return "Choose a subcategory to continue.";
+      return null;
+    }
+    if (step === 1) {
+      if (images.length === 0) return "Add at least one photo to continue.";
+      return null;
+    }
+    if (step === 2) {
+      if (title.trim().length < 3) return "Title must be at least 3 characters.";
+      if (description.trim().length < 10) {
+        return `Description needs ${10 - description.trim().length} more character(s) (min 10).`;
+      }
+      for (const a of attributeDefs) {
+        if (a.required && !(attrs[a.key] ?? "").trim()) {
+          return `${a.label} is required.`;
+        }
+      }
+      return null;
+    }
+    if (step === 3) {
+      if (!(Number(priceInr) > 0)) return "Enter a valid asking price.";
+      return null;
+    }
+    if (step === 4) {
+      if (!city) return "Choose a city.";
+      return null;
+    }
+    return null;
+  }
+
+  function goNext() {
+    const reason = nextBlockedReason();
+    if (reason) {
+      setError(reason);
+      return;
+    }
+    setError(null);
+    setStep((s) => s + 1);
   }
 
   if (!authChecked) {
@@ -424,7 +474,11 @@ export default function SellPage() {
                 className="mt-2 min-h-32"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Condition, accessories, reason for selling…"
               />
+              <p className="mt-1 text-xs text-foreground-muted">
+                {description.trim().length}/10 characters minimum
+              </p>
             </div>
             <div>
               <Label>Condition</Label>
@@ -586,11 +640,7 @@ export default function SellPage() {
             </Button>
           ) : null}
           {step < STEPS.length - 1 ? (
-            <Button
-              type="button"
-              disabled={busy || !canNext()}
-              onClick={() => setStep((s) => s + 1)}
-            >
+            <Button type="button" disabled={busy} onClick={goNext}>
               Continue
             </Button>
           ) : (
@@ -602,6 +652,9 @@ export default function SellPage() {
             My listings
           </Button>
         </div>
+        {!canNext() && step < STEPS.length - 1 ? (
+          <p className="text-sm text-foreground-muted">{nextBlockedReason()}</p>
+        ) : null}
       </div>
     </div>
   );
