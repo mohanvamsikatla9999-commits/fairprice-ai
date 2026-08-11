@@ -1,6 +1,6 @@
 import type { ConditionGrade, PriceVerdict } from "@prisma/client";
 
-export const ENGINE_VERSION = "v1";
+export const ENGINE_VERSION = "v1.2";
 
 export type ValuationAttributes = {
   categorySlug?: string;
@@ -12,12 +12,25 @@ export type ValuationAttributes = {
   ageMonths?: number;
   city?: string;
   state?: string;
+  area?: string;
   askingPriceInr?: number;
   msrpInr?: number;
   attributes?: Record<string, string | number | boolean>;
   demandScore?: number;
   liquidityScore?: number;
+  /** When false, fetchComparables must not invent synthetic comps. Default true for legacy. */
+  allowSyntheticComps?: boolean;
+  storage?: string;
+  variant?: string;
 };
+
+export type EvidencePriceType =
+  | "TRANSACTION_PRICE"
+  | "SOLD_PRICE"
+  | "ACCEPTED_OFFER"
+  | "OFFER_PRICE"
+  | "ASKING_PRICE"
+  | "UNKNOWN";
 
 export type ComparableInput = {
   id?: string;
@@ -28,8 +41,13 @@ export type ComparableInput = {
   state?: string | null;
   ageMonths?: number | null;
   soldAt?: Date | null;
+  createdAt?: Date | null;
   isSynthetic?: boolean;
   source?: string;
+  evidenceType?: EvidencePriceType;
+  tier?: "A" | "B" | "C" | "D";
+  similarityScore?: number;
+  weight?: number;
 };
 
 export type ValuationFactor = {
@@ -67,6 +85,22 @@ export type ValuationResult = {
   explanation?: string;
   buyerVerdict?: string;
   sellerRecommendation?: string;
+  /** Transparent calculation trail for FairPrice auditability. */
+  calculationTrace?: {
+    msrpAnchorInr: number | null;
+    compsMedianInr: number | null;
+    blendedBaseInr: number;
+    locationMult: number;
+    demandMult: number;
+    liquidityMult: number;
+    conditionMult: number;
+    softAppliedToValue: boolean;
+    demandAppliedToValue: boolean;
+    outlierMethod: string | null;
+    realComparableCount: number;
+    syntheticComparableCount: number;
+    usedAboveNewFlag: boolean;
+  };
 };
 
 export function conditionGradeToScore(grade: ConditionGrade): number {

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Heart, MessageSquare, ShieldAlert, Sparkles } from "lucide-react";
 import { ProductGallery } from "@/components/marketplace/product-gallery";
 import { SellerCard } from "@/components/trust/seller-card";
+import { ListingFairPricePanel } from "@/components/valuation/listing-fairprice-panel";
 import { SellerTrustPanel } from "@/components/verification/seller-trust-panel";
 import { PriceMeter } from "@/components/valuation/price-meter";
 import { FairValueCard } from "@/components/valuation/fair-value-card";
@@ -364,6 +365,25 @@ export default function ProductPage() {
               />
             </>
           ) : null}
+
+          <ListingFairPricePanel
+            listingId={String(listing.id)}
+            title={String(listing.title)}
+            categorySlug={
+              listing.category &&
+              typeof listing.category === "object" &&
+              "slug" in listing.category
+                ? String((listing.category as { slug?: string }).slug ?? "")
+                : undefined
+            }
+            askingPriceInr={Number(listing.priceInr)}
+            city={listing.city ? String(listing.city) : null}
+            conditionGrade={
+              listing.conditionGrade
+                ? String(listing.conditionGrade)
+                : undefined
+            }
+          />
 
           <SellerCard
             id={seller?.id ?? "seller"}

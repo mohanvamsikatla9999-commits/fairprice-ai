@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { PageHero } from "@/components/layout/page-hero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,224 +14,369 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FairValueCard } from "@/components/valuation/fair-value-card";
-import { PriceMeter } from "@/components/valuation/price-meter";
-import { ValuationReport } from "@/components/valuation/valuation-report";
-import { categories } from "@/config/site";
+import { formatInr } from "@/lib/utils";
+import type { FairPriceResult } from "@/services/fairprice/schemas";
+
+const CATEGORIES = [
+  "mobiles",
+  "cars",
+  "bikes",
+  "computers-laptops",
+  "electronics",
+  "furniture",
+  "properties",
+];
+
+const STAGES = [
+  "Identifying product…",
+  "Checking market…",
+  "Comparing prices…",
+  "Analyzing condition…",
+  "Calculating FairPrice…",
+] as const;
 
 export default function ValuePage() {
   const [categorySlug, setCategorySlug] = React.useState("mobiles");
-  const [productLabel, setProductLabel] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [description, setDescription] = React.useState("");
   const [conditionGrade, setConditionGrade] = React.useState("GOOD");
   const [askingPriceInr, setAskingPriceInr] = React.useState("");
-  const [city, setCity] = React.useState("");
+  const [city, setCity] = React.useState("Hyderabad");
   const [ageMonths, setAgeMonths] = React.useState("");
+  const [storage, setStorage] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [stage, setStage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [valuation, setValuation] = React.useState<{
-    fairValueMinInr: number;
-    fairValueMaxInr: number;
-    fairValueMidInr: number;
-    recommendedListingInr: number;
-    expectedSaleMaxInr: number;
-    quickSaleInr: number;
-    priceConfidence: number;
-    marketDemandScore: number;
-    conditionScore: number;
-    verdict: "UNDERPRICED" | "FAIR" | "SLIGHTLY_HIGH" | "OVERPRICED" | "UNKNOWN";
-    negotiationMinInr: number;
-    negotiationMaxInr: number;
-    explanation?: string;
-    buyerVerdict?: string;
-    sellerRecommendation?: string;
-  } | null>(null);
+  const [result, setResult] = React.useState<FairPriceResult | null>(null);
 
-  async function run() {
+  async function run(e?: React.FormEvent) {
+    e?.preventDefault();
     setBusy(true);
     setError(null);
+    setResult(null);
+    let stageIdx = 0;
+    setStage(STAGES[0]!);
+    const timer = setInterval(() => {
+      stageIdx = Math.min(stageIdx + 1, STAGES.length - 1);
+      setStage(STAGES[stageIdx]!);
+    }, 700);
+
     try {
-      const asking = Number(askingPriceInr);
-      const age = Number(ageMonths);
-      const res = await fetch("/api/ai/valuation", {
+      const res = await fetch("/api/fairprice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categorySlug,
-          productLabel: productLabel.trim() || "Item",
-          conditionGrade: conditionGrade || "GOOD",
-          askingPriceInr:
-            Number.isFinite(asking) && asking > 0 ? asking : undefined,
-          city: city || undefined,
-          ageMonths: Number.isFinite(age) && age >= 0 ? age : undefined,
-          persist: false,
+          title: title.trim() || undefined,
+          description: description.trim() || undefined,
+          conditionGrade,
+          city: city.trim() || undefined,
+          askingPriceInr: askingPriceInr ? Number(askingPriceInr) : undefined,
+          ageMonths: ageMonths ? Number(ageMonths) : undefined,
+          attributes: storage ? { storage } : undefined,
+          skipVision: true,
+          persist: true,
         }),
       });
       const json = await res.json();
-      if (!json.ok) {
-        setError(json.error?.message ?? "Valuation failed");
-        return;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error?.message ?? "Valuation failed");
       }
-      setValuation(json.data.valuation);
-    } catch {
-      setError("Valuation failed. Check your connection and try again.");
+      setResult(json.data.fairPrice as FairPriceResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Valuation failed");
     } finally {
+      clearInterval(timer);
+      setStage(null);
       setBusy(false);
     }
   }
 
-  const demand =
-    (valuation?.marketDemandScore ?? 0.55) > 0.7
-      ? "high"
-      : (valuation?.marketDemandScore ?? 0.55) < 0.4
-        ? "low"
-        : "moderate";
-
   return (
-    <>
+    <div className="pb-16">
       <PageHero
-        eyebrow="Valuation"
-        title="Know what it's worth"
-        description="Run FairPrice AI on any item before you buy or sell."
+        title="FairPrice AI"
+        description="Evidence-based India resale estimate — not an LLM guessing a number."
       />
-      <div className="container-page grid gap-8 py-10 lg:grid-cols-[1fr_1.1fr]">
-        <div className="space-y-4 rounded-2xl border border-border bg-white p-6 shadow-sm">
+
+      <div className="container-page grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <form onSubmit={run} className="space-y-4 rounded-2xl border border-border bg-white p-5">
           <div>
             <Label>Category</Label>
             <Select value={categorySlug} onValueChange={setCategorySlug}>
-              <SelectTrigger className="mt-1.5">
+              <SelectTrigger className="mt-2">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((c) => (
-                  <SelectItem key={c.slug} value={c.slug}>
-                    {c.name}
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Product</Label>
+            <Label htmlFor="title">Product title</Label>
             <Input
-              className="mt-1.5"
-              value={productLabel}
-              onChange={(e) => setProductLabel(e.target.value)}
-              placeholder="iPhone 13 128GB"
+              id="title"
+              className="mt-2"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="iPhone 15 128GB"
+              required
             />
           </div>
           <div>
-            <Label>Condition</Label>
-            <Select value={conditionGrade} onValueChange={setConditionGrade}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {["LIKE_NEW", "EXCELLENT", "GOOD", "FAIR", "POOR"].map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g.replaceAll("_", " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="desc">Description (optional)</Label>
+            <Textarea
+              id="desc"
+              className="mt-2"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Asking price (optional)</Label>
+              <Label>Condition</Label>
+              <Select value={conditionGrade} onValueChange={setConditionGrade}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["LIKE_NEW", "EXCELLENT", "GOOD", "FAIR", "POOR"].map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g.replaceAll("_", " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="storage">Storage / variant</Label>
               <Input
-                className="mt-1.5"
+                id="storage"
+                className="mt-2"
+                value={storage}
+                onChange={(e) => setStorage(e.target.value)}
+                placeholder="128GB"
+              />
+            </div>
+            <div>
+              <Label htmlFor="ask">Asking price (optional)</Label>
+              <Input
+                id="ask"
                 type="number"
+                className="mt-2"
                 value={askingPriceInr}
                 onChange={(e) => setAskingPriceInr(e.target.value)}
               />
             </div>
             <div>
-              <Label>Age (months)</Label>
+              <Label htmlFor="age">Age (months)</Label>
               <Input
-                className="mt-1.5"
+                id="age"
                 type="number"
+                className="mt-2"
                 value={ageMonths}
                 onChange={(e) => setAgeMonths(e.target.value)}
               />
             </div>
-          </div>
-          <div>
-            <Label>City</Label>
-            <Input
-              className="mt-1.5"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Bengaluru"
-            />
-          </div>
-          <Button variant="lime" className="w-full" disabled={busy} onClick={() => void run()}>
-            {busy ? "Running…" : "Check FairPrice"}
-          </Button>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
-
-        <div className="space-y-4">
-          {valuation ? (
-            <>
-              <FairValueCard
-                fairLow={valuation.fairValueMinInr}
-                fairHigh={valuation.fairValueMaxInr}
-                recommendedListing={valuation.recommendedListingInr}
-                expectedSelling={valuation.expectedSaleMaxInr}
-                quickSale={valuation.quickSaleInr}
-                confidence={Math.round(valuation.priceConfidence * 100)}
-                demand={demand}
+            <div>
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                className="mt-2"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               />
-              {askingPriceInr ? (
-                <PriceMeter
-                  sellerPrice={Number(askingPriceInr)}
-                  fairLow={valuation.fairValueMinInr}
-                  fairHigh={valuation.fairValueMaxInr}
-                  negotiationLow={valuation.negotiationMinInr}
-                  negotiationHigh={valuation.negotiationMaxInr}
-                  zone={
-                    valuation.verdict === "UNKNOWN" ? undefined : valuation.verdict
-                  }
-                />
-              ) : null}
-              <ValuationReport
-                productName={productLabel || "Item"}
-                sellerPrice={Number(askingPriceInr) || valuation.fairValueMidInr}
-                fairLow={valuation.fairValueMinInr}
-                fairHigh={valuation.fairValueMaxInr}
-                recommendedListing={valuation.recommendedListingInr}
-                expectedSelling={valuation.expectedSaleMaxInr}
-                quickSale={valuation.quickSaleInr}
-                confidence={Math.round(valuation.priceConfidence * 100)}
-                demand={demand}
-                conditionScore={valuation.conditionScore}
-                zone={
-                  valuation.verdict === "UNKNOWN" ? undefined : valuation.verdict
-                }
-                insights={[
-                  ...(valuation.explanation
-                    ? [{ title: "Explanation", body: valuation.explanation }]
-                    : []),
-                  ...(valuation.buyerVerdict
-                    ? [{ title: "Buyer take", body: valuation.buyerVerdict }]
-                    : []),
-                  ...(valuation.sellerRecommendation
-                    ? [
-                        {
-                          title: "Seller tip",
-                          body: valuation.sellerRecommendation,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border bg-background-muted/50 p-10 text-center text-sm text-foreground-muted">
-              Enter product details and run Check FairPrice to see the valuation report.
             </div>
+          </div>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {stage ? <p className="text-sm text-primary">{stage}</p> : null}
+          <Button type="submit" disabled={busy || !title.trim()}>
+            {busy ? "Analyzing…" : "Get FairPrice"}
+          </Button>
+        </form>
+
+        <div>
+          {!result ? (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-foreground-muted">
+              Enter a product to see estimated FairPrice, confidence, and evidence.
+              We never invent Amazon, Flipkart, or marketplace prices.
+            </div>
+          ) : (
+            <FairPricePanel result={result} />
           )}
         </div>
       </div>
-    </>
+    </div>
+  );
+}
+
+function FairPricePanel({ result }: { result: FairPriceResult }) {
+  const v = result.valuation;
+
+  return (
+    <div className="space-y-5 rounded-2xl border border-border bg-white p-6 shadow-sm">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          FairPrice AI
+        </p>
+        <h2 className="mt-1 font-display text-2xl font-bold">
+          {result.product.productLabel}
+        </h2>
+        <p className="text-sm text-foreground-muted">
+          Identity {(result.product.identityConfidence * 100).toFixed(0)}% ·{" "}
+          {result.confidence.label.replaceAll("_", " ")} confidence
+        </p>
+      </div>
+
+      {(result.status !== "SUCCESS" && result.status !== "OK") || !v ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-medium">{result.message ?? "Insufficient data"}</p>
+          <p className="mt-1 text-xs uppercase tracking-wide text-amber-800">
+            Status: {result.status.replaceAll("_", " ")}
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {result.explanation.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          {(result.missingInformation?.length || result.questions.length) ? (
+            <div className="mt-3">
+              <p className="font-medium">What would help</p>
+              <ul className="mt-1 list-disc pl-5">
+                {(result.missingInformation?.map((m) => m.question) ?? result.questions).map(
+                  (q) => (
+                    <li key={q}>{q}</li>
+                  ),
+                )}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          <div>
+            <p className="text-sm text-foreground-muted">Estimated FairPrice</p>
+            <p className="font-display text-3xl font-bold">
+              {formatInr(v.displayFairLow ?? v.fairLow)} –{" "}
+              {formatInr(v.displayFairHigh ?? v.fairHigh)}
+            </p>
+            <p className="mt-1 text-sm">
+              {result.confidence.label.replaceAll("_", " ")} confidence
+              {result.fairPriceScore?.askingPriceInr != null
+                ? ` · Seller asking ${formatInr(result.fairPriceScore.askingPriceInr)}`
+                : ""}
+            </p>
+          </div>
+
+          {result.fairPriceScore?.score != null ? (
+            <div className="rounded-xl bg-background-muted p-4 text-sm">
+              <p className="font-medium">
+                FairPrice Score {result.fairPriceScore.score}/100
+              </p>
+              <p className="text-foreground-muted">{result.fairPriceScore.label}</p>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat label="Recommended list" value={formatInr(v.recommendedListingPrice)} />
+            <Stat label="Expected selling" value={formatInr(v.expectedSellingPrice)} />
+            <Stat label="Quick sale" value={formatInr(v.quickSalePrice)} />
+          </div>
+
+          <div>
+            <p className="font-medium">Why this estimate?</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground-muted">
+              {result.explanation.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+
+          {result.anomalies?.length ? (
+            <div className="rounded-xl border border-border p-3 text-xs text-foreground-muted">
+              {result.anomalies.map((a) => (
+                <p key={a.code}>{a.message}</p>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge>
+              Marketplace comps: {result.evidence.marketplaceComparables}
+            </Badge>
+            {result.evidence.tierCounts ? (
+              <Badge>
+                Tiers A/B:{" "}
+                {(result.evidence.tierCounts.A ?? 0) + (result.evidence.tierCounts.B ?? 0)}
+              </Badge>
+            ) : null}
+            <Badge>
+              Amazon:{" "}
+              {result.evidence.amazonReferences
+                ? `${result.evidence.amazonReferences} ref`
+                : "unavailable"}
+            </Badge>
+            <Badge>
+              Flipkart:{" "}
+              {result.evidence.flipkartReferences
+                ? `${result.evidence.flipkartReferences} ref`
+                : "unavailable"}
+            </Badge>
+            {result.evidence.newPriceReferenceInr ? (
+              <Badge>
+                New ref ~{formatInr(result.evidence.newPriceReferenceInr)}
+              </Badge>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link
+                href={`/sell?title=${encodeURIComponent(result.product.productLabel)}&price=${v.recommendedListingPrice}`}
+              >
+                Use recommended price
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  `FairPrice for ${result.product.productLabel}: ${formatInr(v.displayFairLow ?? v.fairLow)}–${formatInr(v.displayFairHigh ?? v.fairHigh)}`,
+                );
+              }}
+            >
+              Copy result
+            </Button>
+          </div>
+        </>
+      )}
+
+      <p className="text-xs text-foreground-muted">
+        Estimated FairPrice based on available market evidence. Not a guarantee.
+        Pipeline {result.meta.pipelineVersion} · {result.meta.durationMs}ms
+      </p>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border p-3">
+      <p className="text-xs text-foreground-muted">{label}</p>
+      <p className="font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-border bg-background-muted px-3 py-1">
+      {children}
+    </span>
   );
 }
