@@ -1,7 +1,9 @@
 /**
- * FairPrice AI — comprehensive demo seed
- * Idempotent-ish: clears demo-related rows in FK-safe order, then upserts catalog/users.
- * Marked as demo data in bios/descriptions where appropriate.
+ * FairPrice AI — foundation seed
+ * Seeds categories, locations, admin, and product catalog for valuation.
+ * Does NOT create fake marketplace listings. Users list via /sell.
+ *
+ * Optional: SEED_DEMO=1 is ignored for listing generation in this build.
  */
 import {
   PrismaClient,
@@ -668,12 +670,9 @@ async function seedLocations() {
   }
 }
 
-async function seedUsers() {
-  console.log("Seeding users (admin, demo, ~100)...");
+async function seedAdminOnly() {
+  console.log("Seeding admin account only (no demo buyers/sellers)...");
   const adminHash = await bcrypt.hash("FairPriceAdmin123!", 12);
-  const demoHash = await bcrypt.hash("demo1234", 12);
-  const genericHash = await bcrypt.hash("FairPriceDemo1!", 12);
-
   const admin = await prisma.user.create({
     data: {
       email: "admin@fairprice.ai",
@@ -687,7 +686,7 @@ async function seedUsers() {
       buyerTrustScore: 99,
       onboardingDone: true,
       emailVerified: new Date(),
-      bio: "Platform SUPER_ADMIN — demo seed account.",
+      bio: "Platform administrator",
       profile: {
         create: {
           city: "Hyderabad",
@@ -697,98 +696,12 @@ async function seedUsers() {
       },
     },
   });
-
-  const buyer = await prisma.user.create({
-    data: {
-      email: "buyer@demo.fairprice.ai",
-      passwordHash: demoHash,
-      name: "Demo Buyer",
-      displayName: "Demo Buyer",
-      role: Role.BUYER,
-      verificationLevel: VerificationLevel.EMAIL_VERIFIED,
-      trustScore: 72,
-      onboardingDone: true,
-      emailVerified: new Date(),
-      bio: DEMO_BIO,
-      preferredCategories: ["mobiles", "laptops", "gaming"],
-      profile: {
-        create: { city: "Bengaluru", state: "Karnataka", country: "IN" },
-      },
-    },
-  });
-
-  const seller = await prisma.user.create({
-    data: {
-      email: "seller@demo.fairprice.ai",
-      passwordHash: demoHash,
-      name: "Demo Seller",
-      displayName: "Demo Seller",
-      role: Role.SELLER,
-      verificationLevel: VerificationLevel.PHONE_VERIFIED,
-      trustScore: 78,
-      sellerTrustScore: 82,
-      onboardingDone: true,
-      emailVerified: new Date(),
-      phoneVerified: new Date(),
-      bio: DEMO_BIO,
-      preferredCategories: ["mobiles", "cars", "furniture"],
-      profile: {
-        create: { city: "Mumbai", state: "Maharashtra", country: "IN" },
-      },
-    },
-  });
-
-  const users = [admin, buyer, seller];
-
-  for (let i = 0; i < 97; i++) {
-    const first = pick(FIRST_NAMES, i);
-    const last = pick(LAST_NAMES, i * 3);
-    const loc = pick(CITIES, i);
-    const role =
-      i % 5 === 0 ? Role.SELLER : i % 7 === 0 ? Role.BUYER : Role.USER;
-    const email = `user${String(i + 1).padStart(3, "0")}@demo.fairprice.ai`;
-    const u = await prisma.user.create({
-      data: {
-        email,
-        passwordHash: genericHash,
-        name: `${first} ${last}`,
-        displayName: first,
-        role,
-        verificationLevel:
-          i % 4 === 0
-            ? VerificationLevel.PHONE_VERIFIED
-            : i % 3 === 0
-              ? VerificationLevel.EMAIL_VERIFIED
-              : VerificationLevel.BASIC,
-        trustScore: randInt(40, 90),
-        sellerTrustScore: randInt(40, 90),
-        buyerTrustScore: randInt(40, 90),
-        onboardingDone: true,
-        emailVerified: new Date(),
-        bio: `${DEMO_BIO} Based in ${loc.city}.`,
-        profile: {
-          create: {
-            city: loc.city,
-            state: loc.state,
-            country: "IN",
-            approximateLat: loc.lat + (Math.random() - 0.5) * 0.05,
-            approximateLng: loc.lng + (Math.random() - 0.5) * 0.05,
-            completedSales: role === Role.SELLER ? randInt(0, 12) : 0,
-            completedPurchases: role === Role.BUYER ? randInt(0, 8) : randInt(0, 3),
-          },
-        },
-      },
-    });
-    users.push(u);
-    if ((i + 1) % 25 === 0) console.log(`  ... ${i + 1}/97 users`);
-  }
-
-  console.log(`Users created: ${users.length}`);
-  return { admin, buyer, seller, users };
+  console.log("Admin: admin@fairprice.ai");
+  return admin;
 }
 
 async function seedProducts(categoryIds: Map<string, string>) {
-  console.log("Seeding products + variants...");
+  console.log("Seeding product catalog (valuation reference only — not marketplace listings)...");
   const products: Array<{
     id: string;
     slug: string;
@@ -807,7 +720,7 @@ async function seedProducts(categoryIds: Map<string, string>) {
         brand: p.brand,
         name: p.name,
         slug: p.slug,
-        description: `${p.description} (demo seed)`,
+        description: p.description.replace(/^Demo catalog — /, ""),
         imageUrl: PLACEHOLDER,
         isActive: true,
         variants: {
@@ -836,7 +749,9 @@ async function seedProducts(categoryIds: Map<string, string>) {
       })),
     });
   }
-  console.log(`Products: ${products.length}, variants: ${products.reduce((n, p) => n + p.variants.length, 0)}`);
+  console.log(
+    `Catalog products: ${products.length}, variants: ${products.reduce((n, p) => n + p.variants.length, 0)}`,
+  );
   return products;
 }
 
@@ -1343,23 +1258,33 @@ async function seedContent() {
 }
 
 async function main() {
-  console.log("=== FairPrice AI seed starting ===");
+  const seedDemo = process.env.SEED_DEMO === "1" || process.env.SEED_DEMO === "true";
+
+  console.log(
+    seedDemo
+      ? "=== FairPrice AI FULL DEMO seed (includes fake listings) ==="
+      : "=== FairPrice AI foundation seed (no marketplace mock listings) ===",
+  );
+
   await clearDemoData();
   const categoryIds = await seedCategories();
   await seedCategoryAttributes(categoryIds);
   await seedLocations();
-  const userCtx = await seedUsers();
-  const products = await seedProducts(categoryIds);
-  await seedMarketData(products);
-  const listings = await seedListings(products, userCtx);
-  await seedValuationsAndCondition(listings, userCtx);
-  await seedSocial(listings, userCtx);
-  await seedContent();
-  console.log("=== FairPrice AI seed complete ===");
-  console.log("Demo accounts:");
-  console.log("  admin@fairprice.ai / FairPriceAdmin123!");
-  console.log("  buyer@demo.fairprice.ai / demo1234");
-  console.log("  seller@demo.fairprice.ai / demo1234");
+  await seedAdminOnly();
+  await seedProducts(categoryIds);
+
+  if (seedDemo) {
+    console.warn(
+      "SEED_DEMO=1 is set. Refusing full demo marketplace seed in this build — use an older commit or restore demo helpers if you truly need synthetic listings.",
+    );
+    console.warn(
+      "Default seed keeps the site empty of listings so only real user posts appear.",
+    );
+  }
+
+  console.log("=== Seed complete ===");
+  console.log("Marketplace listings: none (users create them via /sell)");
+  console.log("Admin (ops only): admin@fairprice.ai / FairPriceAdmin123!");
 }
 
 main()

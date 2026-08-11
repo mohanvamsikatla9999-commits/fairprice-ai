@@ -4,9 +4,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { SearchBar } from "@/components/marketplace/search-bar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CheckFairPriceButton } from "@/components/valuation/check-fairprice-button";
-import { formatInr } from "@/lib/utils";
 
 export function Hero() {
   const reduceMotion = useReducedMotion();
@@ -58,64 +56,26 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           >
-            <motion.div
-              className="glass-card relative z-10 p-5 sm:p-6"
-              animate={
-                reduceMotion
-                  ? undefined
-                  : { y: [0, -8, 0] }
-              }
-              transition={
-                reduceMotion
-                  ? undefined
-                  : { duration: 5, repeat: Infinity, ease: "easeInOut" }
-              }
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    Live valuation
-                  </p>
-                  <h3 className="mt-1 font-display text-xl font-bold text-foreground">
-                    iPhone 14 Pro 128GB
-                  </h3>
-                  <p className="text-sm text-foreground-muted">Excellent · Bengaluru</p>
-                </div>
-                <Badge variant="warning">Potentially overpriced</Badge>
-              </div>
-
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-background-muted p-3">
-                  <p className="text-[11px] text-foreground-muted">Seller asking</p>
-                  <p className="font-display text-xl font-bold">{formatInr(38000)}</p>
-                </div>
-                <div className="rounded-xl bg-accent/25 p-3">
-                  <p className="text-[11px] text-foreground-muted">Fair range</p>
-                  <p className="font-display text-xl font-bold text-foreground">
-                    {formatInr(32000, { compact: true })}–{formatInr(34000, { compact: true })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="price-meter mb-2 h-3 rounded-full" />
-              <div className="relative mb-4 h-4">
-                <div
-                  className="absolute top-0 h-3 w-0.5 -translate-x-1/2 bg-foreground"
-                  style={{ left: "78%" }}
-                />
-                <div
-                  className="absolute top-3 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                  style={{ left: "78%" }}
-                >
-                  Ask
-                </div>
-              </div>
-              <p className="text-xs leading-relaxed text-foreground-muted">
-                Similar units recently sold closer to ₹33K. Consider negotiating toward the fair
-                band.
+            <div className="glass-card relative z-10 space-y-4 p-5 sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Real listings only
               </p>
-            </motion.div>
-
+              <h3 className="font-display text-xl font-bold text-foreground">
+                Marketplace stays empty until someone sells
+              </h3>
+              <p className="text-sm leading-relaxed text-foreground-muted">
+                No demo inventory. Browse what real users list, or post your first item in
+                minutes.
+              </p>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <Button asChild>
+                  <Link href="/sell">List an item</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/marketplace">Browse marketplace</Link>
+                </Button>
+              </div>
+            </div>
             <div className="absolute -bottom-6 -left-4 -z-0 h-40 w-40 rounded-full bg-accent/40 blur-2xl" />
             <div className="absolute -right-6 -top-6 -z-0 h-36 w-36 rounded-full bg-white/20 blur-2xl" />
           </motion.div>

@@ -49,7 +49,7 @@ const envSchema = z.object({
   STORAGE_PUBLIC_URL: z.string().default("/uploads"),
   ADMIN_EMAIL: z.string().default("admin@fairprice.ai"),
   ADMIN_PASSWORD: z.string().default("FairPrice@Admin123"),
-  DEMO_MODE: boolFromString.default(true),
+  DEMO_MODE: boolFromString.default(false),
   MOCK_IDENTITY_VERIFICATION: boolFromString.default(true),
   IDENTITY_VERIFICATION_PROVIDER: z.enum(["mock", "external"]).default("mock"),
   IDENTITY_WEBHOOK_SECRET: z.string().default("dev-idv-webhook-secret"),

@@ -200,10 +200,10 @@ function MarketplaceInner() {
             <LoadingSkeleton />
           ) : items.length === 0 ? (
             <EmptyState
-              title="No listings found"
-              description="Try another city or broaden filters."
-              actionLabel="Try AI search"
-              onAction={() => router.push("/search")}
+              title="No listings yet"
+              description="Only real user posts appear here. Be the first to sell something nearby."
+              actionLabel="Start selling"
+              onAction={() => router.push("/sell")}
             />
           ) : (
             <ListingGrid

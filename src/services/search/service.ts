@@ -114,6 +114,12 @@ export class SearchService {
     const where: Prisma.ListingWhereInput = {
       status: "ACTIVE",
       deletedAt: null,
+      // Never surface synthetic seed / demo inventory
+      NOT: [
+        { description: { contains: "Synthetic seed data" } },
+        { description: { contains: "Demo listing #" } },
+        { seller: { email: { endsWith: "@demo.fairprice.ai" } } },
+      ],
       ...(categoryFilter ? { category: categoryFilter } : {}),
       ...(filters.city
         ? { city: { equals: filters.city, mode: "insensitive" } }
