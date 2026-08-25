@@ -15,7 +15,6 @@ export function PhoneAuthForm({
   const [step, setStep] = React.useState<"phone" | "otp">("phone");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [hint, setHint] = React.useState<string | null>(null);
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +31,6 @@ export function PhoneAuthForm({
       setError(json.error?.message ?? "Could not send OTP");
       return;
     }
-    setHint(json.data.message);
     setStep("otp");
   }
 
@@ -61,26 +59,41 @@ export function PhoneAuthForm({
     return (
       <form onSubmit={verifyOtp} className="space-y-4">
         <div>
-          <Label>OTP sent to {phone}</Label>
+          <Label>Enter OTP sent to {phone}</Label>
           <Input
-            className="mt-1.5"
+            className="mt-1.5 text-center text-xl font-bold tracking-[0.3em]"
             inputMode="numeric"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="6-digit code"
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="6-digit OTP"
             required
             maxLength={6}
+            autoFocus
           />
+          <p className="mt-1.5 text-xs text-foreground-muted">
+            OTP sent to {phone}. Valid for 10 minutes.
+          </p>
         </div>
-        {hint ? <p className="text-xs text-foreground-muted">{hint}</p> : null}
+
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button type="submit" variant="lime" className="w-full" disabled={busy}>
+
+        <Button
+          type="submit"
+          variant="lime"
+          className="w-full"
+          disabled={busy || code.length < 6}
+        >
           {busy ? "Verifying…" : "Verify & continue"}
         </Button>
+
         <button
           type="button"
           className="w-full text-sm text-primary hover:underline"
-          onClick={() => setStep("phone")}
+          onClick={() => {
+            setStep("phone");
+            setCode("");
+            setError(null);
+          }}
         >
           Change number
         </button>
@@ -103,7 +116,7 @@ export function PhoneAuthForm({
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <Button type="submit" variant="lime" className="w-full" disabled={busy}>
-        {busy ? "Sending…" : "Continue with phone"}
+        {busy ? "Sending OTP…" : "Continue with phone"}
       </Button>
     </form>
   );

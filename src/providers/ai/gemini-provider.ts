@@ -121,10 +121,11 @@ export class GeminiProvider implements AIProvider {
     const generationConfig: Record<string, unknown> = {
       temperature: options?.temperature ?? 0.2,
       ...(options?.maxTokens ? { maxOutputTokens: options.maxTokens } : {}),
+      // Disable thinking mode — prevents JSON being wrapped in thought blocks
+      thinkingConfig: { thinkingBudget: 0 },
+      // Do NOT set responseMimeType — newer models with thinking return non-JSON
+      // when forced into JSON mode. We extract JSON from text instead.
     };
-    if (options?.json) {
-      generationConfig.responseMimeType = "application/json";
-    }
 
     try {
       const endpoint = `${this.baseUrl}/models/${encodeURIComponent(model)}:generateContent`;

@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       email: user.email,
       ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
       userAgent: request.headers.get("user-agent") ?? undefined,
-      requireSigninFace: true,
+      requireSigninFace: true, // Always require face verification for new registrations
     });
 
     return ok(

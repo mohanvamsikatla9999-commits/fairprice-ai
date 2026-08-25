@@ -62,10 +62,17 @@ export async function POST(request: Request) {
       askingPriceInr: body.askingPriceInr,
       msrpInr: body.msrpInr,
       attributes: body.attributes,
+      allowSyntheticComps: true,
     });
     const narrative = await valuationExplanationService.explain(
       result,
       body.askingPriceInr,
+      {
+        msrpInr: body.msrpInr ?? null,
+        conditionGrade: body.conditionGrade,
+        ageMonths: body.ageMonths,
+        city: body.city,
+      },
     );
 
     let valuationId: string | undefined;

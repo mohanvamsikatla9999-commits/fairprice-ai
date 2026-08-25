@@ -99,12 +99,14 @@ export async function POST(request: Request, ctx: Ctx) {
         throw new ValidationError("Verify your phone in settings before revealing it");
       }
       const masked = maskPhone(me.phone);
+      // Store only the masked number in the message body — never the raw phone
       const message = await chatService.sendMessage({
         conversationId: id,
         senderId: user.id,
-        body: `My verified phone (masked): ${masked}. Full number shared securely: ${me.phone}. Prefer call over WhatsApp advances.`,
+        body: `Phone shared: ${masked} — contact via FairPrice chat first. Never pay before inspecting.`,
       });
-      return ok({ message, masked });
+      // Return the full phone only in the API response (not stored in DB)
+      return ok({ message, masked, fullPhone: me.phone });
     }
 
     if (body.action === "mark_sold") {

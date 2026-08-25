@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return ok({
       phone: result.phone,
       expiresAt: result.expiresAt.toISOString(),
-      message: "OTP sent. Check your SMS (mock provider logs the message in development).",
+      message: "OTP sent to your mobile number. Valid for 10 minutes.",
     });
   } catch (error) {
     return handleRouteError(error);

@@ -48,7 +48,7 @@ export interface FooterProps {
 
 export function Footer({ className }: FooterProps) {
   return (
-    <footer className={cn("border-t border-border bg-white", className)}>
+    <footer className={cn("border-t-2 border-t-primary/20 bg-white", className)}>
       <div className="container-page py-14">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_repeat(4,1fr)]">
           <div className="max-w-sm space-y-4">

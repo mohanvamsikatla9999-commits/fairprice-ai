@@ -78,8 +78,8 @@ export async function POST(request: Request) {
       payment: { id: captured.id, status: captured.status, amountInr },
       message:
         body.type === "FEATURED"
-          ? "Listing featured for 7 days (mock payment)."
-          : "Listing boosted for 7 days (mock payment).",
+          ? `Listing featured for ${body.days} days.`
+          : `Listing boosted for ${body.days} days.`,
     });
   } catch (error) {
     return handleRouteError(error);

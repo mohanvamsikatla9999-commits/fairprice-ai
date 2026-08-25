@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       data: {
         userId: user.id,
         subject: `FairPrice Assist · ${listing.title}`,
-        body: `Assist requested for listing ${listing.id}. Fee ₹${feeInr}. Mock escrow — hold funds until inspection.`,
+        body: `Assist requested for listing ${listing.id}. Fee ₹${feeInr}. Awaiting buyer payment confirmation.`,
         priority: "high",
       },
     });
@@ -68,9 +68,9 @@ export async function POST(request: Request) {
       stage: "CREATED",
       steps: [
         "Seller confirms availability",
-        "Buyer pays via UPI into FairPrice Assist hold (mock)",
-        "Inspect item at a public place",
-        "Release payment or raise dispute",
+        "Buyer pays via UPI — amount held by FairPrice Assist",
+        "Inspect item in person at a public place",
+        "Confirm receipt to release payment, or raise a dispute",
       ],
       listing: {
         id: listing.id,

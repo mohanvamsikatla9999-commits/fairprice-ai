@@ -28,6 +28,10 @@ export default function MyListingsPage() {
   const load = React.useCallback(async () => {
     const res = await fetch("/api/listings?mine=1");
     const json = await res.json();
+    if (res.status === 401) {
+      window.location.href = "/login?next=/my-listings";
+      return;
+    }
     if (!res.ok) {
       setError(json.error?.message ?? "Failed to load listings");
       return;

@@ -70,10 +70,20 @@ export async function sendPhoneOtp(options: {
   });
 
   const sms = createSmsProvider();
-  await sms.send({
-    to: phone,
-    body: `FairPrice AI code: ${code}. Valid for 10 minutes. Do not share.`,
-  });
+  // Don't let SMS failure block OTP generation — the code is already in DB
+  try {
+    await sms.send({
+      to: phone,
+      body: `${code} is your FairPrice verification number. Expires in 10 mins.`,
+    });
+  } catch (smsErr) {
+    console.warn(`[OTP] SMS delivery failed for ${phone}:`, smsErr instanceof Error ? smsErr.message : String(smsErr));
+  }
+
+  // Log OTP to server terminal only — never sent to client
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`\n📱 [DEV OTP] Phone: ${phone} → Code: ${code}\n`);
+  }
 
   return { phone, expiresAt };
 }
