@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createAIProvider } from "@/providers/ai";
+import { env } from "@/config/env";
+import { createAIProvider, GeminiProvider } from "@/providers/ai";
 import type { AIProvider, ChatMessage } from "@/providers/ai/types";
 import { logger } from "@/lib/logger";
 import {
@@ -265,12 +266,7 @@ let singleton: AIService | null = null;
 
 export function getAIService(): AIService {
   if (!singleton) {
-    // Construct directly to avoid the async createAIProvider() factory which can
-    // cause Next.js webpack chunk-loading errors on first module evaluation.
-    // GeminiProvider constructor is synchronous and safe to call at module init time.
     try {
-      const { GeminiProvider } = require("@/providers/ai/gemini-provider") as typeof import("@/providers/ai/gemini-provider");
-      const { env } = require("@/config/env") as typeof import("@/config/env");
       if (env.GEMINI_API_KEY) {
         singleton = new AIService(new GeminiProvider());
       } else {
