@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { Sparkles, ShieldCheck, TrendingUp, Tag } from "lucide-react";
 import { SearchBar } from "@/components/marketplace/search-bar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CheckFairPriceButton } from "@/components/valuation/check-fairprice-button";
-import { formatInr } from "@/lib/utils";
+
+const TRUST_BADGES = [
+  { icon: ShieldCheck, label: "Fraud detection" },
+  { icon: TrendingUp, label: "Live market prices" },
+  { icon: Sparkles, label: "AI-powered" },
+];
 
 export function Hero() {
   const reduceMotion = useReducedMotion();
@@ -14,34 +18,47 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden">
       <div className="hero-blue relative">
-        <div className="pointer-events-none absolute inset-0 opacity-30">
-          <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-accent/30 blur-3xl" />
-          <div className="absolute bottom-0 right-10 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+        {/* Background blobs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
+          <div className="absolute bottom-0 right-10 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-bright/20 blur-3xl" />
         </div>
 
-        <div className="container-page relative grid items-center gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
-          <div className="max-w-xl text-white">
-            <p className="mb-4 font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-              FairPrice AI
-            </p>
-            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-              Know What It&apos;s Worth.
-            </h1>
-            <p className="mt-5 max-w-md text-lg text-white/85">
-              Buy and sell used goods with clear AI valuations — so every deal feels fair.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <CheckFairPriceButton href="/value" label="Find a Fair Price" />
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/40 bg-white/10 text-white hover:bg-white hover:text-primary"
-              >
-                <Link href="/sell">Sell Something</Link>
-              </Button>
+        <div className="container-page relative grid items-center gap-12 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-28">
+          {/* Left — copy */}
+          <motion.div
+            className="max-w-xl text-white"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/15 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-accent">
+              <Sparkles className="h-3.5 w-3.5" />
+              FairPrice AI — India&apos;s smarter marketplace
             </div>
-            <div className="mt-8 max-w-lg">
+
+            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+              Know What It&apos;s{" "}
+              <span className="relative whitespace-nowrap">
+                <span className="relative z-10 text-accent">Worth.</span>
+                <svg
+                  className="absolute -bottom-2 left-0 h-3 w-full text-accent/40"
+                  viewBox="0 0 200 8"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path d="M0 7 Q100 0 200 7" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                </svg>
+              </span>
+            </h1>
+
+            <p className="mt-5 max-w-md text-lg leading-relaxed text-white/85">
+              Buy and sell used goods with real AI valuations — original price, depreciation, fair second-hand range. Every deal feels fair.
+            </p>
+
+            {/* Search bar */}
+            <div className="mt-7 max-w-lg">
               <SearchBar
                 size="lg"
                 className="border-0 bg-white shadow-2xl"
@@ -50,76 +67,117 @@ export function Hero() {
                 }}
               />
             </div>
-          </div>
 
-          <motion.div
-            className="relative mx-auto w-full max-w-md"
-            initial={reduceMotion ? false : { opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-          >
-            <motion.div
-              className="glass-card relative z-10 p-5 sm:p-6"
-              animate={
-                reduceMotion
-                  ? undefined
-                  : { y: [0, -8, 0] }
-              }
-              transition={
-                reduceMotion
-                  ? undefined
-                  : { duration: 5, repeat: Infinity, ease: "easeInOut" }
-              }
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    Live valuation
-                  </p>
-                  <h3 className="mt-1 font-display text-xl font-bold text-foreground">
-                    iPhone 14 Pro 128GB
-                  </h3>
-                  <p className="text-sm text-foreground-muted">Excellent · Bengaluru</p>
-                </div>
-                <Badge variant="warning">Potentially overpriced</Badge>
-              </div>
+            {/* CTA buttons */}
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button asChild size="lg" variant="lime">
+                <Link href="/sell">
+                  <Tag className="h-4 w-4" />
+                  Sell with AI
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-white/40 bg-white/10 text-white hover:bg-white hover:text-primary"
+              >
+                <Link href="/marketplace">Browse listings</Link>
+              </Button>
+            </div>
 
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-background-muted p-3">
-                  <p className="text-[11px] text-foreground-muted">Seller asking</p>
-                  <p className="font-display text-xl font-bold">{formatInr(38000)}</p>
-                </div>
-                <div className="rounded-xl bg-accent/25 p-3">
-                  <p className="text-[11px] text-foreground-muted">Fair range</p>
-                  <p className="font-display text-xl font-bold text-foreground">
-                    {formatInr(32000, { compact: true })}–{formatInr(34000, { compact: true })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="price-meter mb-2 h-3 rounded-full" />
-              <div className="relative mb-4 h-4">
+            {/* Trust badges */}
+            <div className="mt-8 flex flex-wrap gap-3">
+              {TRUST_BADGES.map((badge) => (
                 <div
-                  className="absolute top-0 h-3 w-0.5 -translate-x-1/2 bg-foreground"
-                  style={{ left: "78%" }}
-                />
-                <div
-                  className="absolute top-3 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                  style={{ left: "78%" }}
+                  key={badge.label}
+                  className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90"
                 >
-                  Ask
+                  <badge.icon className="h-3.5 w-3.5 text-accent" />
+                  {badge.label}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Right — feature card */}
+          <motion.div
+            className="relative mx-auto w-full max-w-sm"
+            initial={reduceMotion ? false : { opacity: 0, y: 32, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.18 }}
+          >
+            {/* FairPrice sample card */}
+            <div className="glass-card relative z-10 overflow-hidden p-6">
+              {/* Header */}
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                    FairPrice AI
+                  </p>
+                  <h3 className="mt-0.5 font-display text-lg font-bold">POCO M7 6GB/128GB</h3>
+                </div>
+                <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                  Fair price
+                </span>
+              </div>
+
+              {/* Price range */}
+              <div className="rounded-xl bg-primary/5 p-4">
+                <p className="text-xs text-foreground-muted">Fair second-hand range</p>
+                <p className="mt-1 font-display text-2xl font-bold text-foreground">
+                  ₹7,500 – ₹9,200
+                </p>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  {[
+                    { label: "Original MRP", value: "₹12,499" },
+                    { label: "Recommended", value: "₹8,800" },
+                    { label: "Quick sale", value: "₹7,200" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-lg bg-white p-2 shadow-sm">
+                      <p className="text-[10px] text-foreground-muted">{s.label}</p>
+                      <p className="text-xs font-bold">{s.value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <p className="text-xs leading-relaxed text-foreground-muted">
-                Similar units recently sold closer to ₹33K. Consider negotiating toward the fair
-                band.
-              </p>
-            </motion.div>
 
-            <div className="absolute -bottom-6 -left-4 -z-0 h-40 w-40 rounded-full bg-accent/40 blur-2xl" />
-            <div className="absolute -right-6 -top-6 -z-0 h-36 w-36 rounded-full bg-white/20 blur-2xl" />
+              {/* Explanation */}
+              <p className="mt-3 text-xs leading-relaxed text-foreground-muted">
+                Original price ₹12,499. After 8 months &amp; good condition, depreciation ~40%. Fair resale: ₹7,500–₹9,200.
+              </p>
+
+              <div className="mt-4 flex gap-2">
+                <Button size="sm" className="flex-1" asChild>
+                  <Link href="/sell">Sell this</Link>
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1" asChild>
+                  <Link href="/value">Check mine</Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Floating decorations */}
+            <div className="absolute -bottom-8 -left-6 -z-0 h-44 w-44 rounded-full bg-accent/30 blur-3xl" />
+            <div className="absolute -right-8 -top-8 -z-0 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
           </motion.div>
         </div>
+      </div>
+
+      {/* Wave separator */}
+      <div className="relative -mt-1 bg-background">
+        <svg
+          className="w-full text-[#1b4dff]"
+          style={{ height: "48px" }}
+          viewBox="0 0 1440 48"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M0 48 L0 24 Q360 0 720 24 Q1080 48 1440 24 L1440 48 Z"
+            fill="currentColor"
+          />
+        </svg>
       </div>
     </section>
   );

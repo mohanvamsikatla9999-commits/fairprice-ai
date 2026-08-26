@@ -29,13 +29,18 @@ export async function POST(request: Request) {
     });
     if (user.isBlocked) throw new UnauthorizedError("Account is blocked");
 
+    // New users MUST complete face verification to prevent fraud.
+    // Returning users who are already face-verified skip the challenge.
+    const isFaceVerified = Boolean(user.faceVerifiedAt);
+    const requireFace = verified.isNew || !isFaceVerified;
+
     const session = await createSession({
       userId: user.id,
       role: user.role,
       email: user.email,
       ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
       userAgent: request.headers.get("user-agent") ?? undefined,
-      requireSigninFace: false,
+      requireSigninFace: requireFace,
     });
 
     return ok({

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Heart, MessageSquare, ShieldAlert, Sparkles } from "lucide-react";
 import { ProductGallery } from "@/components/marketplace/product-gallery";
 import { SellerCard } from "@/components/trust/seller-card";
+import { ListingFairPricePanel } from "@/components/valuation/listing-fairprice-panel";
 import { SellerTrustPanel } from "@/components/verification/seller-trust-panel";
 import { PriceMeter } from "@/components/valuation/price-meter";
 import { FairValueCard } from "@/components/valuation/fair-value-card";
@@ -29,12 +30,17 @@ type Valuation = {
   priceConfidence: number;
   marketDemandScore: number;
   conditionScore: number;
+  depreciationEstimate?: number;
+  marketTrend?: string;
   verdict: "UNDERPRICED" | "FAIR" | "SLIGHTLY_HIGH" | "OVERPRICED" | "UNKNOWN";
   negotiationMinInr: number;
   negotiationMaxInr: number;
   explanation?: string;
   buyerVerdict?: string;
   sellerRecommendation?: string;
+  talkingPoints?: string[];
+  factors?: Array<{ name: string; impactInr: number; impactPct: number; description: string }>;
+  comparableCount?: number;
 };
 
 export default function ProductPage() {
@@ -87,6 +93,11 @@ export default function ProductPage() {
       } catch {
         /* ignore */
       }
+      void fetch("/api/recently-viewed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: id }),
+      }).catch(() => undefined);
       setLoading(false);
     })();
   }, [id]);
@@ -95,21 +106,35 @@ export default function ProductPage() {
     setChecking(true);
     setError(null);
     try {
-      const res = await fetch(`/api/listings/${id}/valuation`, { method: "POST" });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 90_000);
+      let res: Response;
+      try {
+        res = await fetch(`/api/listings/${id}/valuation`, {
+          method: "POST",
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       const json = await res.json();
       if (!json.ok) {
         setError(json.error?.message ?? "Valuation failed");
         return;
       }
       setValuation(json.data.valuation);
-      // Scroll valuation into view on smaller screens after Check FairPrice
       requestAnimationFrame(() => {
         document
           .getElementById("fairprice-report")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
-    } catch {
-      setError("Network error while checking FairPrice");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("abort") || msg.includes("AbortError")) {
+        setError("FairPrice check timed out — please try again.");
+      } else {
+        setError(`FairPrice check failed: ${msg}`);
+      }
     } finally {
       setChecking(false);
     }
@@ -243,42 +268,89 @@ export default function ProductPage() {
           </div>
           {valuation ? (
             <div id="fairprice-report" className="scroll-mt-24 space-y-4">
-            <ValuationReport
-              productName={title}
-              sellerPrice={priceInr}
-              fairLow={valuation.fairValueMinInr}
-              fairHigh={valuation.fairValueMaxInr}
-              recommendedListing={valuation.recommendedListingInr}
-              expectedSelling={valuation.expectedSaleMaxInr}
-              quickSale={valuation.quickSaleInr}
-              confidence={Math.round(valuation.priceConfidence * 100)}
-              demand={demand}
-              conditionScore={valuation.conditionScore}
-              zone={
-                valuation.verdict === "UNKNOWN" ? undefined : valuation.verdict
-              }
-              insights={[
-                ...(valuation.explanation
-                  ? [
-                      {
-                        title: "AI explanation",
-                        body: valuation.explanation,
-                      },
-                    ]
-                  : []),
-                ...(valuation.buyerVerdict
-                  ? [{ title: "Buyer take", body: valuation.buyerVerdict }]
-                  : []),
-                ...(valuation.sellerRecommendation
-                  ? [
-                      {
-                        title: "Seller tip",
-                        body: valuation.sellerRecommendation,
-                      },
-                    ]
-                  : []),
-              ]}
-            />
+              {/* Main valuation report */}
+              <ValuationReport
+                productName={title}
+                sellerPrice={priceInr}
+                fairLow={valuation.fairValueMinInr}
+                fairHigh={valuation.fairValueMaxInr}
+                recommendedListing={valuation.recommendedListingInr}
+                expectedSelling={valuation.expectedSaleMaxInr}
+                quickSale={valuation.quickSaleInr}
+                confidence={Math.round(valuation.priceConfidence * 100)}
+                demand={demand}
+                conditionScore={valuation.conditionScore}
+                zone={valuation.verdict === "UNKNOWN" ? undefined : valuation.verdict}
+                insights={[
+                  ...(valuation.explanation
+                    ? [{ title: "AI explanation", body: valuation.explanation, tone: "neutral" as const }]
+                    : []),
+                  ...(valuation.buyerVerdict
+                    ? [{ title: "Buyer take", body: valuation.buyerVerdict, tone: "positive" as const }]
+                    : []),
+                  ...(valuation.sellerRecommendation
+                    ? [{ title: "Seller tip", body: valuation.sellerRecommendation, tone: "tip" as const }]
+                    : []),
+                ]}
+              />
+
+              {/* Negotiation talking points */}
+              {(valuation.talkingPoints?.length ?? 0) > 0 && (
+                <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                    </div>
+                    <h3 className="font-display font-semibold">Negotiation talking points</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {valuation.talkingPoints!.map((point, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-foreground-muted">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Price factors breakdown */}
+              {(valuation.factors?.length ?? 0) > 0 && (
+                <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 font-display font-semibold">What drives this price</h3>
+                  <div className="space-y-2.5">
+                    {valuation.factors!.slice(0, 5).map((f, i) => (
+                      <div key={i} className="flex items-start gap-3 text-sm">
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${f.impactInr > 0 ? "bg-green-500" : f.impactInr < 0 ? "bg-red-400" : "bg-border"}`} />
+                        <div className="min-w-0">
+                          <span className="font-medium">{f.name}</span>
+                          {f.description ? (
+                            <span className="ml-1.5 text-foreground-muted">— {f.description}</span>
+                          ) : null}
+                        </div>
+                        {f.impactInr !== 0 && (
+                          <span className={`ml-auto shrink-0 text-xs font-semibold ${f.impactInr > 0 ? "text-green-600" : "text-red-500"}`}>
+                            {f.impactInr > 0 ? "+" : ""}{formatInr(f.impactInr)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Evidence footer */}
+                  <div className="mt-4 flex flex-wrap gap-3 border-t border-border pt-3 text-xs text-foreground-muted">
+                    {(valuation.comparableCount ?? 0) > 0 && (
+                      <span>{valuation.comparableCount} comparable listings</span>
+                    )}
+                    {(valuation.depreciationEstimate ?? 0) > 0 && (
+                      <span>~{Math.round((valuation.depreciationEstimate ?? 0) * 100)}% depreciation</span>
+                    )}
+                    {valuation.marketTrend && (
+                      <span>Market: {valuation.marketTrend}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
@@ -360,6 +432,25 @@ export default function ProductPage() {
             </>
           ) : null}
 
+          <ListingFairPricePanel
+            listingId={String(listing.id)}
+            title={String(listing.title)}
+            categorySlug={
+              listing.category &&
+              typeof listing.category === "object" &&
+              "slug" in listing.category
+                ? String((listing.category as { slug?: string }).slug ?? "")
+                : undefined
+            }
+            askingPriceInr={Number(listing.priceInr)}
+            city={listing.city ? String(listing.city) : null}
+            conditionGrade={
+              listing.conditionGrade
+                ? String(listing.conditionGrade)
+                : undefined
+            }
+          />
+
           <SellerCard
             id={seller?.id ?? "seller"}
             name={seller?.displayName || seller?.name || "Seller"}
@@ -394,7 +485,7 @@ export default function ProductPage() {
             />
             {seller?.id ? (
               <a
-                href={`/store/${seller.id}`}
+                href={`/seller/${seller.id}`}
                 className="mt-4 inline-block text-sm text-primary hover:underline"
               >
                 View seller store

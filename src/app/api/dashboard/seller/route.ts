@@ -31,7 +31,7 @@ export async function GET() {
         draftListings,
         soldListings,
         totalViews: viewsAgg._sum.views ?? 0,
-        totalFavorites: favoritesAgg || (viewsAgg._sum.favoriteCount ?? 0),
+        totalFavorites: favoritesAgg ?? (viewsAgg._sum.favoriteCount ?? 0),
         pendingOffers: receivedOffers.filter((o) => o.status === "PENDING").length,
       },
       listings: listings.slice(0, 20),

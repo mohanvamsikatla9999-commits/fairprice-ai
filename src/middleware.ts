@@ -3,15 +3,30 @@ import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "fp_session";
 
+const PROTECTED_PREFIXES = [
+  "/sell",
+  "/messages",
+  "/wishlist",
+  "/settings",
+  "/dashboard",
+  "/my-listings",
+  "/notifications",
+  "/alerts",
+  "/admin",
+  "/onboarding",
+];
+
 /**
- * Edge middleware: lightweight gate for /admin routes.
- * Cookie presence is checked here; full session + RBAC verification
- * happens in admin layouts/pages via getCurrentUser / requirePermission.
+ * Edge middleware: cookie gate for protected app routes.
+ * Full session + RBAC verification still happens in route handlers / layouts.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const needsAuth = PROTECTED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
 
-  if (pathname.startsWith("/admin")) {
+  if (needsAuth) {
     const session = request.cookies.get(SESSION_COOKIE)?.value;
     if (!session) {
       const loginUrl = new URL("/login", request.url);
@@ -21,14 +36,30 @@ export function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-
-  // Optional informational rate-limit headers (app-level limiter may override)
   response.headers.set("X-RateLimit-Policy", "app-level");
   response.headers.set("X-Content-Type-Options", "nosniff");
-
   return response;
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/sell/:path*",
+    "/sell",
+    "/messages/:path*",
+    "/messages",
+    "/wishlist/:path*",
+    "/wishlist",
+    "/settings/:path*",
+    "/settings",
+    "/dashboard/:path*",
+    "/dashboard",
+    "/my-listings/:path*",
+    "/my-listings",
+    "/notifications/:path*",
+    "/notifications",
+    "/alerts/:path*",
+    "/alerts",
+    "/admin/:path*",
+    "/onboarding",
+  ],
 };

@@ -27,7 +27,10 @@ export async function POST(request: Request) {
       .update(`${rawBody}.${env.IDENTITY_WEBHOOK_SECRET}`)
       .digest("hex");
 
-    if (sig !== expectedMock && sig !== expectedProd) {
+    // In production, ONLY accept the prod HMAC signature — never the mock bypass
+    const allowMock = env.NODE_ENV !== "production" && env.MOCK_IDENTITY_VERIFICATION;
+
+    if (sig !== expectedProd && !(allowMock && sig === expectedMock)) {
       await prisma.verificationEvent.create({
         data: {
           eventType: "provider_webhook_rejected",

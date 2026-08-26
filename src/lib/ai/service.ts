@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createAIProvider } from "@/providers/ai";
+import { env } from "@/config/env";
+import { createAIProvider, GeminiProvider } from "@/providers/ai";
 import type { AIProvider, ChatMessage } from "@/providers/ai/types";
 import { logger } from "@/lib/logger";
 import {
@@ -264,6 +265,16 @@ export class AIService {
 let singleton: AIService | null = null;
 
 export function getAIService(): AIService {
-  if (!singleton) singleton = new AIService();
+  if (!singleton) {
+    try {
+      if (env.GEMINI_API_KEY) {
+        singleton = new AIService(new GeminiProvider());
+      } else {
+        singleton = new AIService();
+      }
+    } catch {
+      singleton = new AIService();
+    }
+  }
   return singleton;
 }

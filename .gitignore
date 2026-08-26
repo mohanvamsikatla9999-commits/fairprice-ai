@@ -70,3 +70,6 @@ prisma/*.db-journal
 # turbo / cache
 .turbo
 .cache
+
+# vercel
+.vercel

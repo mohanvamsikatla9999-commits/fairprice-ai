@@ -62,6 +62,28 @@ export default function ConversationPage() {
     void load();
   }, [id, router]);
 
+  // Poll for new messages every 5 seconds while the window is focused
+  React.useEffect(() => {
+    if (!meId) return;
+    async function pollMessages() {
+      const res = await fetch(`/api/conversations/${id}/messages`);
+      const json = await res.json();
+      if (json.ok) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m: { id: string }) => m.id));
+          const newMsgs = (json.data.messages as { id: string }[]).filter(
+            (m) => !existingIds.has(m.id),
+          );
+          return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+        });
+      }
+    }
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void pollMessages();
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [id, meId]);
+
   async function send(body: string) {
     const res = await fetch(`/api/conversations/${id}/messages`, {
       method: "POST",

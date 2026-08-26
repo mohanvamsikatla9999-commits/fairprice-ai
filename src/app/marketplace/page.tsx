@@ -125,6 +125,41 @@ function MarketplaceInner() {
         </div>
       </PageHero>
 
+      {/* Category pill bar */}
+      <div className="border-b border-border bg-white">
+        <div className="container-page flex gap-2 overflow-x-auto py-3 scrollbar-none">
+          {[
+            { label: "All", slug: "" },
+            { label: "📱 Mobiles", slug: "mobiles" },
+            { label: "💻 Laptops", slug: "laptops" },
+            { label: "📺 TVs", slug: "tvs" },
+            { label: "🚗 Cars", slug: "cars" },
+            { label: "🛋️ Furniture", slug: "furniture" },
+            { label: "👗 Fashion", slug: "fashion" },
+            { label: "🎮 Gaming", slug: "gaming" },
+            { label: "📷 Cameras", slug: "cameras" },
+          ].map((cat) => (
+            <button
+              key={cat.slug}
+              type="button"
+              onClick={() => {
+                const p = new URLSearchParams(searchParams.toString());
+                if (cat.slug) p.set("category", cat.slug);
+                else p.delete("category");
+                router.push(`/marketplace?${p.toString()}`);
+              }}
+              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                category === cat.slug
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-white text-foreground hover:border-primary/40"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="container-page grid gap-8 py-10 lg:grid-cols-[280px_1fr]">
         <FilterSidebar
           value={filters}
@@ -171,28 +206,53 @@ function MarketplaceInner() {
           </div>
 
           {view === "map" ? (
-            <div className="mb-6 rounded-2xl border border-border bg-[linear-gradient(135deg,#e8f5e9,#f1f8e9)] p-6">
-              <p className="font-display text-lg font-semibold">Map view</p>
-              <p className="mt-1 text-sm text-foreground-muted">
-                Showing {items.length} pins around {city?.name ?? "India"} (mock
-                maps). Switch to list for details.
-              </p>
-              <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-                {items.slice(0, 8).map((item) => (
-                  <li
-                    key={item.id}
-                    className="rounded-xl border border-border/60 bg-white/80 px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium">{item.title}</span>
-                    {item.distanceKm != null ? (
-                      <span className="text-foreground-muted">
-                        {" "}
-                        · {item.distanceKm.toFixed(1)} km
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+            <div className="mb-6 overflow-hidden rounded-2xl border border-border shadow-sm">
+              {city ? (
+                <div className="relative">
+                  <iframe
+                    title="Listings map"
+                    width="100%"
+                    height="420"
+                    loading="lazy"
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${city.lng - 0.15}%2C${city.lat - 0.1}%2C${city.lng + 0.15}%2C${city.lat + 0.1}&layer=mapnik&marker=${city.lat}%2C${city.lng}`}
+                    className="w-full border-0"
+                    allowFullScreen
+                  />
+                  {/* Listing pins overlay */}
+                  <div className="border-t border-border bg-white p-4">
+                    <p className="mb-2 text-sm font-semibold">
+                      {items.length} listings near {city.name}
+                    </p>
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {items.slice(0, 6).map((item) => (
+                        <li key={item.id}>
+                          <a
+                            href={`/product/${item.id}`}
+                            className="flex items-center justify-between rounded-xl border border-border/60 bg-white px-3 py-2 text-sm hover:border-primary/40 hover:bg-primary/3"
+                          >
+                            <span className="line-clamp-1 font-medium">{item.title}</span>
+                            {item.distanceKm != null && (
+                              <span className="ml-2 shrink-0 text-xs text-foreground-muted">
+                                {item.distanceKm.toFixed(1)} km
+                              </span>
+                            )}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-xs text-foreground-muted">
+                      Powered by OpenStreetMap · Switch to list view for full details
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 bg-secondary/30 p-10 text-center">
+                  <p className="font-semibold">Select a city to see listings on the map</p>
+                  <p className="text-sm text-foreground-muted">
+                    Use the city picker above to explore listings near you
+                  </p>
+                </div>
+              )}
             </div>
           ) : null}
 
@@ -200,10 +260,10 @@ function MarketplaceInner() {
             <LoadingSkeleton />
           ) : items.length === 0 ? (
             <EmptyState
-              title="No listings found"
-              description="Try another city or broaden filters."
-              actionLabel="Try AI search"
-              onAction={() => router.push("/search")}
+              title="No listings yet"
+              description="Only real user posts appear here. Be the first to sell something nearby."
+              actionLabel="Start selling"
+              onAction={() => router.push("/sell")}
             />
           ) : (
             <ListingGrid

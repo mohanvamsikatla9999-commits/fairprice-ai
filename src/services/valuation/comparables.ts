@@ -2,6 +2,10 @@ import type { ConditionGrade } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { ComparableInput, ValuationAttributes } from "./model";
 
+/**
+ * @deprecated Synthetic comps invent prices — kept only for explicit legacy opt-in.
+ * FairPrice path sets allowSyntheticComps=false.
+ */
 function syntheticComps(input: ValuationAttributes): ComparableInput[] {
   const base =
     input.msrpInr && input.msrpInr > 0
@@ -26,8 +30,10 @@ function syntheticComps(input: ValuationAttributes): ComparableInput[] {
     state: input.state ?? "Karnataka",
     ageMonths: (input.ageMonths ?? 12) + (i - 3) * 2,
     soldAt: new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000),
+    createdAt: new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000),
     isSynthetic: true,
     source: "synthetic",
+    evidenceType: "UNKNOWN" as const,
   }));
 }
 
@@ -43,17 +49,50 @@ function titleTokens(input: ValuationAttributes): string[] {
     .slice(0, 6);
 }
 
+function storageToken(input: ValuationAttributes): string | undefined {
+  const fromAttrs =
+    typeof input.attributes?.storage === "string"
+      ? String(input.attributes.storage)
+      : undefined;
+  return input.storage ?? input.variant ?? fromAttrs;
+}
+
+function rejectsFamilyMismatch(title: string, model?: string): boolean {
+  if (!model) return false;
+  const t = title.toLowerCase();
+  const m = model.toLowerCase();
+  const markers = ["pro", "plus", "max", "ultra", "mini"];
+  for (const marker of markers) {
+    const modelHas = m.includes(marker);
+    const titleHas = new RegExp(`\\b${marker}\\b`, "i").test(t);
+    if (modelHas !== titleHas) return true;
+  }
+  return false;
+}
+
+function titleMatchesVariant(title: string, storage?: string): boolean {
+  if (!storage) return true;
+  const t = title.toLowerCase().replace(/\s/g, "");
+  const s = storage.toLowerCase().replace(/\s/g, "");
+  if (t.includes(s)) return true;
+  // If title states a different capacity, reject
+  const other = t.match(/(\d+)(gb|tb)/);
+  if (other && `${other[1]}${other[2]}` !== s) return false;
+  return true; // unknown storage in title — keep but lower priority upstream
+}
+
 /**
  * Comparable retrieval priority:
  * 1. Same product variant
- * 2. Title/brand token match
+ * 2. Title/brand + model token match with variant guard
  * 3. Same productId marketplace listings in MSRP band
- * 4. Synthetic comps from MSRP/asking (same product economics)
+ * 4. Synthetic only when explicitly allowed (legacy)
  */
 export async function fetchComparables(
   input: ValuationAttributes & { variantId?: string; productId?: string },
   limit = 24,
 ): Promise<ComparableInput[]> {
+  const allowSynthetic = input.allowSyntheticComps !== false;
   const msrpBand =
     input.msrpInr && input.msrpInr > 0
       ? {
@@ -67,6 +106,8 @@ export async function fetchComparables(
           }
         : undefined;
 
+  const storage = storageToken(input);
+
   try {
     if (input.variantId) {
       const byVariant = await prisma.comparableListing.findMany({
@@ -77,7 +118,15 @@ export async function fetchComparables(
         orderBy: { createdAt: "desc" },
         take: limit,
       });
-      if (byVariant.length >= 3) return mapRows(byVariant);
+      if (byVariant.length >= 3) {
+        return mapRows(
+          byVariant.map((r) => ({
+            ...r,
+            createdAt: r.listedAt ?? r.createdAt,
+          })),
+          "SOLD_PRICE",
+        );
+      }
     }
 
     const tokens = titleTokens(input);
@@ -92,24 +141,39 @@ export async function fetchComparables(
           ],
         },
         orderBy: { createdAt: "desc" },
-        take: limit,
+        take: limit * 2,
       });
-      if (byTitle.length >= 3) return mapRows(byTitle);
+      const filtered = byTitle.filter((row) => {
+        if (rejectsFamilyMismatch(row.title, input.model)) return false;
+        return titleMatchesVariant(row.title, storage);
+      });
+      if (filtered.length >= 3) {
+        return mapRows(
+          filtered.slice(0, limit).map((r) => ({
+            ...r,
+            createdAt: r.listedAt ?? r.createdAt,
+          })),
+          "ASKING_PRICE",
+        );
+      }
     }
 
-    if (input.productId || (input.categorySlug && msrpBand)) {
+    if (input.productId || (input.categorySlug && msrpBand && tokens.length >= 2)) {
+      // Require productId OR strong tokens — do not let bare category dominate
       const listings = await prisma.listing.findMany({
         where: {
           status: "ACTIVE",
           deletedAt: null,
           ...(input.productId ? { productId: input.productId } : {}),
-          ...(input.categorySlug && !input.productId
-            ? { category: { slug: input.categorySlug } }
-            : {}),
+          ...(input.productId
+            ? {}
+            : input.categorySlug
+              ? { category: { slug: input.categorySlug } }
+              : {}),
           ...(msrpBand ? { priceInr: msrpBand } : {}),
         },
         orderBy: { publishedAt: "desc" },
-        take: limit,
+        take: limit * 2,
         select: {
           id: true,
           title: true,
@@ -117,20 +181,24 @@ export async function fetchComparables(
           conditionGrade: true,
           city: true,
           state: true,
+          publishedAt: true,
         },
       });
 
-      // Prefer listings whose title overlaps product tokens
-      const filtered = tokens.length
-        ? listings.filter((l) => {
-            const t = l.title.toLowerCase();
-            return tokens.some((tok) => t.includes(tok));
-          })
-        : listings;
+      const filtered = listings.filter((l) => {
+        if (rejectsFamilyMismatch(l.title, input.model)) return false;
+        if (!titleMatchesVariant(l.title, storage)) return false;
+        if (!input.productId && tokens.length) {
+          const t = l.title.toLowerCase();
+          // Require brand+model style overlap — not category-only
+          const hits = tokens.filter((tok) => t.includes(tok)).length;
+          return hits >= Math.min(2, tokens.length);
+        }
+        return true;
+      });
 
-      const use = filtered.length >= 2 ? filtered : listings;
-      if (use.length >= 2) {
-        return use.map((l) => ({
+      if (filtered.length >= 2) {
+        return filtered.slice(0, limit).map((l) => ({
           id: l.id,
           title: l.title,
           priceInr: l.priceInr,
@@ -139,8 +207,10 @@ export async function fetchComparables(
           state: l.state,
           ageMonths: input.ageMonths ?? null,
           soldAt: null,
+          createdAt: l.publishedAt ?? null,
           isSynthetic: false,
           source: "marketplace",
+          evidenceType: "ASKING_PRICE" as const,
         }));
       }
     }
@@ -148,7 +218,8 @@ export async function fetchComparables(
     // DB may be unavailable during unit tests
   }
 
-  return syntheticComps(input);
+  if (allowSynthetic) return syntheticComps(input);
+  return [];
 }
 
 function mapRows(
@@ -163,7 +234,9 @@ function mapRows(
     soldAt: Date | null;
     isSynthetic: boolean;
     source: string;
+    createdAt?: Date | null;
   }>,
+  defaultEvidence: ComparableInput["evidenceType"],
 ): ComparableInput[] {
   return rows.map((r) => ({
     id: r.id,
@@ -174,7 +247,9 @@ function mapRows(
     state: r.state,
     ageMonths: r.ageMonths,
     soldAt: r.soldAt,
+    createdAt: r.createdAt ?? r.soldAt ?? null,
     isSynthetic: r.isSynthetic,
     source: r.source,
+    evidenceType: r.soldAt ? "SOLD_PRICE" : defaultEvidence,
   }));
 }

@@ -11,6 +11,11 @@ export type Permission =
   | "chat:send"
   | "valuation:run"
   | "admin:access"
+  | "admin:categories"
+  | "admin:transactions"
+  | "admin:valuations"
+  | "admin:market-data"
+  | "admin:settings"
   | "moderation:access"
   | "support:access"
   | "business:api"
@@ -71,6 +76,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "chat:send",
     "valuation:run",
     "admin:access",
+    "admin:categories",
+    "admin:transactions",
+    "admin:valuations",
+    "admin:market-data",
+    "admin:settings",
     "moderation:access",
     "support:access",
     "business:api",
@@ -87,6 +97,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "chat:send",
     "valuation:run",
     "admin:access",
+    "admin:categories",
+    "admin:transactions",
+    "admin:valuations",
+    "admin:market-data",
+    "admin:settings",
     "moderation:access",
     "support:access",
     "business:api",

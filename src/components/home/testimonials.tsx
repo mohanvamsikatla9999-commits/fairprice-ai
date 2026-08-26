@@ -1,25 +1,6 @@
+import Link from "next/link";
 import { SectionHeading } from "@/components/shared/section-heading";
-
-const TESTIMONIALS = [
-  {
-    quote:
-      "I almost listed my MacBook ₹12K too low. FairPrice showed the range and I sold within a week at a better number.",
-    name: "Ananya R.",
-    role: "Seller · Hyderabad",
-  },
-  {
-    quote:
-      "Finally a marketplace that tells you when something is overpriced before you waste time negotiating.",
-    name: "Karthik M.",
-    role: "Buyer · Bengaluru",
-  },
-  {
-    quote:
-      "The price meter made the conversation civil. Both of us could see the fair band and meet in the middle.",
-    name: "Neha S.",
-    role: "Buyer · Mumbai",
-  },
-];
+import { Button } from "@/components/ui/button";
 
 export function Testimonials() {
   return (
@@ -27,25 +8,22 @@ export function Testimonials() {
       <div className="container-page">
         <SectionHeading
           align="center"
-          eyebrow="Stories"
-          title="Fairer deals, happier trades."
-          description="Real outcomes from buyers and sellers using FairPrice AI."
+          eyebrow="Community"
+          title="Built for real trades."
+          description="We don’t show fabricated reviews. As buyers and sellers use FairPrice, authentic stories belong here."
         />
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
-          {TESTIMONIALS.map((t) => (
-            <blockquote
-              key={t.name}
-              className="flex h-full flex-col rounded-3xl border border-border bg-white p-6 shadow-sm"
-            >
-              <p className="flex-1 text-base leading-relaxed text-foreground">
-                “{t.quote}”
-              </p>
-              <footer className="mt-6 border-t border-border pt-4">
-                <p className="font-display font-semibold">{t.name}</p>
-                <p className="text-sm text-foreground-muted">{t.role}</p>
-              </footer>
-            </blockquote>
-          ))}
+        <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-dashed border-border bg-white px-6 py-12 text-center">
+          <p className="text-foreground-muted">
+            No mock testimonials. List an item or check a fair price to get started.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/sell">Sell something</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/value">Check FairPrice</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

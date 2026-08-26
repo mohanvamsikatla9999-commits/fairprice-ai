@@ -16,6 +16,7 @@ const updateSchema = z.object({
   variantId: z.string().nullable().optional(),
   city: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
+  area: z.string().nullable().optional(),
   postalCode: z.string().nullable().optional(),
   originalPriceInr: z.number().int().positive().nullable().optional(),
   status: z
@@ -59,6 +60,7 @@ export async function PATCH(request: Request, context: Ctx) {
       variantId: body.variantId ?? undefined,
       city: body.city ?? undefined,
       state: body.state ?? undefined,
+      area: body.area ?? undefined,
       postalCode: body.postalCode ?? undefined,
       originalPriceInr: body.originalPriceInr ?? undefined,
     });
